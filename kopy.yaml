@@ -1,0 +1,100 @@
+name: kronos-share-proto
+description: kronos 共享 Proto 协议中心模板 - gRPC/Protobuf 协议定义与代码生成
+version: 1.0.0
+author: kamalyes
+tags: [go, grpc, protobuf, proto, kronos]
+
+delimiters:
+  - "[["
+  - "]]"
+
+questions:
+  - name: OrgName
+    prompt: 组织名称（如 HitGameAI，用于 Go 模块路径 github.com/{org}/{project}）
+    type: string
+    default: HitGameAI
+    required: true
+
+  - name: OrgPrefix
+    prompt: 组织前缀（如 kronos，用于项目名 {prefix}-share-proto）
+    type: string
+    default: kronos
+    required: true
+
+  - name: ProjectName
+    prompt: 项目名称（如 kronos-share-proto）
+    type: string
+    default: "[[ .OrgPrefix ]]-share-proto"
+    required: true
+
+  - name: ModuleName
+    prompt: Go 模块路径（如 github.com/HitGameAI/kronos-share-proto）
+    type: string
+    default: "github.com/[[ .OrgName ]]/[[ .OrgPrefix ]]-share-proto"
+    required: true
+
+  - name: GoVersion
+    prompt: Go 版本
+    type: select
+    choices: ["1.22", "1.23", "1.24", "1.25"]
+    default: "1.25"
+
+  - name: AuthorName
+    prompt: 作者名称
+    type: string
+    default: kamalyes
+    required: true
+
+  - name: AuthorEmail
+    prompt: 作者邮箱
+    type: string
+    default: example@qq.com
+    required: true
+
+  - name: GatewayPrefix
+    prompt: 网关配置前缀（如 gateway-kronos）
+    type: string
+    default: "gateway-[[ .OrgPrefix ]]"
+    required: true
+
+  - name: HTTPPort
+    prompt: HTTP 端口
+    type: int
+    default: "8080"
+
+  - name: JavaPackage
+    prompt: Java 包名（如 com.kronos.api）
+    type: string
+    default: "com.[[ .OrgPrefix ]].api"
+    required: true
+
+  - name: ProtoPackage
+    prompt: Proto 包名前缀（如 kronos.api）
+    type: string
+    default: "[[ .OrgPrefix ]].api"
+    required: true
+
+  - name: ExampleServiceName
+    prompt: 示例服务名称（PascalCase，如 Health）
+    type: string
+    default: Health
+    required: true
+
+ignore:
+  - "kopy.yaml"
+  - ".git/**"
+  - "*.md"
+
+rename:
+  - pattern: "__project_name__"
+    value: "[[ .ProjectName ]]"
+  - pattern: "__org_prefix__"
+    value: "[[ .OrgPrefix ]]"
+  - pattern: "__example_service__"
+    value: "[[ .ExampleServiceName | snake ]]"
+  - pattern: "__gateway_prefix__"
+    value: "[[ .GatewayPrefix ]]"
+
+hooks:
+  after:
+    - go mod tidy

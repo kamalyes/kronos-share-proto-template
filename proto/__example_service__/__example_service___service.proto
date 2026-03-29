@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "proto/common/common.proto";
+
+option go_package = "[[ .ModuleName ]]/pb/[[ .ExampleServiceName | snake ]]";
+option java_package = "[[ .JavaPackage ]].[[ .ExampleServiceName | snake ]]";
+package [[ .ProtoPackage ]].[[ .ExampleServiceName | snake ]];
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info : {
+    title : "[[ .OrgPrefix ]] [[ .ExampleServiceName ]] Service"
+    description : "[[ .ExampleServiceName ]] 服务"
+    version : "1.0.0"
+  }
+  tags : [
+    {
+      name: "[[ .ExampleServiceName ]]Service"
+      description: "[[ .ExampleServiceName ]] 服务"
+    }
+  ]
+};
+
+// [[ .ExampleServiceName ]] 健康检查请求
+// [EN] [[ .ExampleServiceName ]] health check request
+message [[ .ExampleServiceName ]]CheckRequest {}
+
+// [[ .ExampleServiceName ]] 健康检查数据
+// [EN] [[ .ExampleServiceName ]] health check data
+message [[ .ExampleServiceName ]]CheckData {
+  string status = 1;               // 服务状态 | [EN] Service status
+  map<string, string> details = 2; // 详细信息 | [EN] Detail information
+}
+
+// [[ .ExampleServiceName ]] 健康检查响应
+// [EN] [[ .ExampleServiceName ]] health check response
+message [[ .ExampleServiceName ]]CheckResponse {
+  [[ .ExampleServiceName ]]CheckData data = 3; // 响应数据 | [EN] Response data
+}
+
+// [[ .ExampleServiceName ]] 服务
+// [EN] [[ .ExampleServiceName ]] service
+service [[ .ExampleServiceName ]]Service {
+  // [[ .ExampleServiceName ]] 健康检查
+  // [EN] [[ .ExampleServiceName ]] health check
+  rpc [[ .ExampleServiceName ]]Check([[ .ExampleServiceName ]]CheckRequest) returns ([[ .ExampleServiceName ]]CheckResponse) {
+    option (google.api.http) = {
+      get: "/[[ .ExampleServiceName | snake ]]"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "[[ .ExampleServiceName ]] Check"
+      description: "检查[[ .ExampleServiceName ]]服务状态"
+      tags: "[[ .ExampleServiceName ]]Service"
+    };
+  }
+}

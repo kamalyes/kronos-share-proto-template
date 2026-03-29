@@ -1,0 +1,34 @@
+# go-rpc-gateway 开发环境配置
+name: "[[ .OrgPrefix ]] Gateway 开发版"
+enabled: true
+debug: true
+version: "v1.0.0"
+environment: "development"
+
+http:
+  host: "0.0.0.0"
+  port: [[ .HTTPPort ]]
+  read-timeout: 30
+  write-timeout: 30
+  idle-timeout: 60
+
+swagger:
+  enabled: true
+  hot-reload: true
+  json-path: "/swagger/doc.json"
+  ui-path: "/swagger"
+  yaml-path: "/swagger/doc.yaml"
+  title: "[[ .OrgPrefix ]] Gateway API Documentation"
+  description: "[[ .OrgPrefix ]] API 文档"
+  version: "1.0.0"
+
+  aggregate:
+    enabled: true
+    mode: "merge"
+    ui-layout: "tabs"
+    services:
+      - name: "[[ .ExampleServiceName ]]Service"
+        description: "[[ .ExampleServiceName ]] 服务"
+        spec-path: "./proto/[[ .ExampleServiceName | snake ]]/[[ .ExampleServiceName | snake ]]_service.swagger.yaml"
+        version: "1.0.0"
+        enabled: true

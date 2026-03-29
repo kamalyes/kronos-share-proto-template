@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run [[ .ProjectName ]] Gateway",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/bootstrap",
+      "args": [],
+      "env": {
+        "GO_ENV": "dev"
+      },
+      "windows": {
+        "env": {
+          "GOARCH": "amd64",
+          "GOOS": "windows"
+        }
+      },
+      "osx": {
+        "env": {
+          "GOARCH": "arm64",
+          "GOOS": "darwin"
+        }
+      }
+    }
+  ]
+}

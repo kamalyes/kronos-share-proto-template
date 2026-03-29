@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "[[ .ModuleName ]]/pb/common";
+option java_package = "[[ .JavaPackage ]].common";
+package [[ .ProtoPackage ]].common;
+
+// 状态码
+// [EN] Status code
+enum StatusCode {
+  STATUS_CODE_UNSPECIFIED = 0;       // 未指定 | [EN] Unspecified
+  STATUS_CODE_OK = 1;                // 正常 | [EN] OK
+  STATUS_CODE_CANCELED = 2;          // 已取消 | [EN] Canceled
+  STATUS_CODE_UNKNOWN = 3;           // 未知 | [EN] Unknown
+  STATUS_CODE_INVALID_ARGUMENT = 4;  // 无效参数 | [EN] Invalid argument
+  STATUS_CODE_DEADLINE_EXCEEDED = 5; // 超时 | [EN] Deadline exceeded
+  STATUS_CODE_NOT_FOUND = 6;         // 未找到 | [EN] Not found
+  STATUS_CODE_ALREADY_EXISTS = 7;    // 已存在 | [EN] Already exists
+  STATUS_CODE_PERMISSION_DENIED = 8; // 权限拒绝 | [EN] Permission denied
+  STATUS_CODE_RESOURCE_EXHAUSTED = 9;// 资源耗尽 | [EN] Resource exhausted
+  STATUS_CODE_FAILED_PRECONDITION = 10; // 前置条件失败 | [EN] Failed precondition
+  STATUS_CODE_ABORTED = 11;          // 已中止 | [EN] Aborted
+  STATUS_CODE_OUT_OF_RANGE = 12;     // 超出范围 | [EN] Out of range
+  STATUS_CODE_UNIMPLEMENTED = 13;    // 未实现 | [EN] Unimplemented
+  STATUS_CODE_INTERNAL = 14;         // 内部错误 | [EN] Internal error
+  STATUS_CODE_UNAVAILABLE = 15;      // 不可用 | [EN] Unavailable
+  STATUS_CODE_DATA_LOSS = 16;        // 数据丢失 | [EN] Data loss
+  STATUS_CODE_UNAUTHENTICATED = 17;  // 未认证 | [EN] Unauthenticated
+  reserved 18 to 100;                // 保留供内部使用 | [EN] Reserved for internal use
+  EXTERNAL_ERROR = 104;              // 外部服务错误 | [EN] External service error
+  EXTERNAL_UNAVAILABLE = 105;        // 外部服务不可用 | [EN] External service unavailable
+  EXTERNAL_TIMEOUT = 106;            // 外部服务超时 | [EN] External service timeout
+  EXTERNAL_RETURNED_ERROR = 107;     // 外部服务返回的错误 | [EN] External service returned error
+  reserved 108 to 200;               // 保留 | [EN] Reserved
+}
+
+//===========================  通用处理结果 | Common Processing Result  ==========================//
+
+// 通用处理结果返回, 通常在Batch类请求中返回每个子请求的错误状态
+// [EN] General processing result, usually returned for each sub-request in Batch mode
+message Result {
+  int32 code = 1;           // 状态码 | [EN] Status code
+  string error = 2;         // 错误信息 | [EN] Error message
+  StatusCode status = 3;    // 状态 | [EN] Status
+}
+
+// 分页信息
+// [EN] Paging information
+message Paging {
+  int32 page = 1;           // 当前页码 | [EN] Current page number
+  int32 size = 2;           // 每页条数 | [EN] Page size
+  int32 total = 3;          // 总条数 | [EN] Total count
+}
+
+// 排序信息
+// [EN] Sorting information
+message Sorting {
+  string field = 1;         // 排序字段 | [EN] Sort field
+  bool ascending = 2;       // 是否升序 | [EN] Whether ascending
+}
+
+//===========================  通用时间与空消息 | Common Time & Empty Messages  ==========================//
+
+// 时间区间 [start, end), 时间戳为UTC, JSON格式为RFC 3339
+// [EN] Time range [start, end), timestamp is UTC, JSON format is RFC 3339
+message TimeRange {
+  google.protobuf.Timestamp start_date = 1;           // 开始时间, 区间包含 | [EN] Start time, inclusive
+  google.protobuf.Timestamp end_date = 2;             // 结束时间, 区间不包含 | [EN] End time, exclusive
+}
+
+// 通用空请求
+// [EN] General empty request
+message GeneralEmptyRequest {}
+
+// 通用空响应
+// [EN] General empty response
+message GeneralEmptyResponse {}
+
+//===========================  通用消息结构 | Common Message Structures  ==========================//
+
+// 错误信息结构
+// [EN] Error information structure
+message Error {
+  string code = 1;                               // 错误代码 | [EN] Error code
+  string message = 2;                            // 错误信息 | [EN] Error message
+  map<string, string> details = 3;               // 错误详情 | [EN] Error details
+}
+
+// 多语言文本
+// [EN] Multilingual text
+message LocalizedText {
+  string key = 1;                                // 语言代码 (如: zh, zh-tw, en, ja) | [EN] Language code (e.g., zh, zh-tw, en, ja)
+  string value = 2;                              // 文本内容 | [EN] Text content
+}

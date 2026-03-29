@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option go_package = "[[ .ModuleName ]]/pb/enums";
+option java_package = "[[ .JavaPackage ]].enums";
+package [[ .ProtoPackage ]].enums;
+
+// 通用状态
+// [EN] Common status
+enum CommonStatus {
+  COMMON_STATUS_UNSPECIFIED = 0;  // 未指定 | [EN] Unspecified
+  COMMON_STATUS_NORMAL = 1;       // 正常 | [EN] Normal
+  COMMON_STATUS_DISABLED = 2;     // 禁用 | [EN] Disabled
+}
+
+// 布尔值枚举
+// [EN] True or false enum
+enum TrueOrFalse {
+  TOF_UNKNOWN = 0;                // 未知 | [EN] Unknown
+  TOF_TRUE = 1;                   // 是 | [EN] True
+  TOF_FALSE = 2;                  // 否 | [EN] False
+}
