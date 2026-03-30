@@ -1,100 +1,256 @@
-name: kronos-share-proto
-description: kronos 共享 Proto 协议中心模板 - gRPC/Protobuf 协议定义与代码生成
-version: 1.0.0
+# ============================================================================
+# kopy 模板配置 | kopy template configuration
+#
+# 用法 | Usage:
+#   kopy new @kamalyes/kronos-share-proto-template -o ./my-share-proto
+#   kopy list ./kronos-share-proto-template        # 查看全部变量 | inspect variables
+#
+# ⚠️ 定界符是 <% %>，不是 kopy 默认的 [[ ]] | Delimiters are <% %>, NOT the default [[ ]]
+#
+# 原因：bash 的条件测试语法本身就是双方括号（if [[ -z "$x" ]]），
+# 与 kopy 默认定界符 [[ ]] 冲突，整个 scripts/ 目录会渲染失败。
+# 换成 <% %> 后，生产项目里的 shell 脚本可以逐字节同步进来，
+# 不需要为了模板引擎把 [[ ]] 改写成 [ ]（改写会悄悄改变语义，比如 =~ 和 && ）。
+#
+# [EN] Reason: bash's own test syntax uses double brackets (if [[ -z "$x" ]]), which
+# collides with kopy's default [[ ]] and makes the whole scripts/ directory fail to
+# render. With <% %> the shell scripts from a real project can be synced byte for byte,
+# instead of rewriting [[ ]] into [ ] — a rewrite that silently changes semantics
+# (=~ and && behave differently).
+#
+# 渲染规则 | Rendering rules:
+#   - 文件「内容」和「路径」都会过模板引擎 | both file contents and paths are rendered
+#   - 变量值一律是字符串，判断布尔要写 eq .X "true" | every value is a string
+#   - 执行顺序是先 rename 再 ignore | rename is applied before ignore
+# ============================================================================
+
+name: share-proto
+description: 通用 gRPC/Protobuf 协议中心模板 - 多模块 proto、代码生成链路、网关文档聚合与 CI 全套 | Universal gRPC/Protobuf contract-hub template with multi-module protos, codegen pipeline, gateway docs aggregation and CI
+version: 2.0.0
 author: kamalyes
-tags: [go, grpc, protobuf, proto, kronos]
+tags: [go, grpc, protobuf, proto, grpc-gateway, openapi, template]
 
 delimiters:
-  - "[["
-  - "]]"
+  - "<%"
+  - "%>"
 
 questions:
+  # --------------------------------------------------------------------------
+  # 项目身份 | Project identity
+  # --------------------------------------------------------------------------
   - name: OrgName
-    prompt: 组织名称（如 HitGameAI，用于 Go 模块路径 github.com/{org}/{project}）
+    prompt: "组织名称（GitHub 组织或用户名，用于 Go 模块路径）| GitHub org or user name, used in the Go module path"
     type: string
-    default: HitGameAI
+    default: kamalyes
     required: true
 
   - name: OrgPrefix
-    prompt: 组织前缀（如 kronos，用于项目名 {prefix}-share-proto）
+    prompt: "项目前缀（用于项目名、proto 包名、swagger 标题）| Project prefix for the name, proto package and swagger titles"
     type: string
-    default: kronos
+    default: demo
     required: true
 
   - name: ProjectName
-    prompt: 项目名称（如 kronos-share-proto）
+    prompt: "项目名称（仓库名 / 目录名）| Repository and directory name"
     type: string
-    default: "[[ .OrgPrefix ]]-share-proto"
+    default: "<% .OrgPrefix %>-share-proto"
     required: true
 
   - name: ModuleName
-    prompt: Go 模块路径（如 github.com/HitGameAI/kronos-share-proto）
+    prompt: "Go 模块路径 | Go module path"
     type: string
-    default: "github.com/[[ .OrgName ]]/[[ .OrgPrefix ]]-share-proto"
+    default: "github.com/<% .OrgName %>/<% .ProjectName %>"
     required: true
 
   - name: GoVersion
-    prompt: Go 版本
+    prompt: "Go 版本 | Go version"
     type: select
     choices: ["1.22", "1.23", "1.24", "1.25"]
     default: "1.25"
 
   - name: AuthorName
-    prompt: 作者名称
+    prompt: "作者名称 | Author name"
     type: string
     default: kamalyes
     required: true
 
   - name: AuthorEmail
-    prompt: 作者邮箱
+    prompt: "作者邮箱 | Author email"
     type: string
     default: example@qq.com
     required: true
 
-  - name: GatewayPrefix
-    prompt: 网关配置前缀（如 gateway-kronos）
+  - name: BaseBranch
+    prompt: "主干分支（CI 触发与 pb 自动生成的目标分支）| Trunk branch for CI triggers and pb auto-generation"
+    type: select
+    choices: ["master", "main"]
+    default: "master"
+
+  # --------------------------------------------------------------------------
+  # Proto 命名空间 | Proto namespaces
+  #
+  # 这三个值决定生成代码的落点，定下来后改动成本很高（下游服务的 import 路径会变）。
+  # [EN] These three decide where generated code lands; changing them later breaks
+  # every downstream service's import paths
+  # --------------------------------------------------------------------------
+  - name: ProtoPackage
+    prompt: "Proto 包名前缀（如 demo.api，模块名会追加在后面）| Proto package prefix, the module name is appended"
     type: string
-    default: "gateway-[[ .OrgPrefix ]]"
+    default: "<% .OrgPrefix %>.api"
+    required: true
+
+  - name: JavaPackage
+    prompt: "Java 包名前缀（供 Java 客户端使用）| Java package prefix for Java clients"
+    type: string
+    default: "com.<% .OrgName | lower %>.<% .OrgPrefix %>.api"
+    required: true
+
+  # --------------------------------------------------------------------------
+  # 示例模块 | Example modules
+  #
+  # 模板会生成三个模块：两个单 service 的完整 CRUD 示例 + 一个混合模块。
+  # 混合模块对应真实项目里最常见的形态：一个模块下多个 service 文件，共用模块级实体与枚举，
+  # 接口里混着 CRUD、动作型（retry-sync 这种）和子资源（region-assignments 这种）三类。
+  # 新增模块时：要单 service 就复制示例模块一，要多 service 就复制混合模块。
+  # 下面六个变量决定这三个模块的目录名与服务名，不需要的删目录即可。
+  #
+  # [EN] Three modules are generated: two single-service full-CRUD examples and one mixed
+  # module, which matches what real projects converge on — several service files in one
+  # module sharing its entities and enums, with CRUD, action-style and sub-resource
+  # endpoints side by side. To add a module, copy example module #1 for a single service or
+  # the mixed module for several. These six variables name the three modules.
+  # --------------------------------------------------------------------------
+  - name: ExampleModule
+    prompt: "示例模块一的目录名（小写蛇形，如 catalog）| Directory name of example module #1 (lower snake)"
+    type: string
+    default: catalog
+    required: true
+
+  - name: ExampleService
+    prompt: "示例模块一的服务名（PascalCase，如 Product）| Service name of example module #1 (PascalCase)"
+    type: string
+    default: Product
+    required: true
+
+  - name: SecondModule
+    prompt: "示例模块二的目录名（小写蛇形，如 inventory）| Directory name of example module #2 (lower snake)"
+    type: string
+    default: inventory
+    required: true
+
+  - name: SecondService
+    prompt: "示例模块二的服务名（PascalCase，如 Warehouse）| Service name of example module #2 (PascalCase)"
+    type: string
+    default: Warehouse
+    required: true
+
+  # --------------------------------------------------------------------------
+  # 网关与 CI | Gateway and CI
+  # --------------------------------------------------------------------------
+  - name: MixedModule
+    prompt: "混合模块的目录名（一个模块多个 service，如 tenant）| Directory name of the mixed module, several services in one module"
+    type: string
+    default: tenant
+    required: true
+
+  - name: MixedService
+    prompt: "混合模块的聚合根服务名（PascalCase，如 Tenant；成员服务自动叫 XxxMember）| Aggregate-root service of the mixed module; the member service is named XxxMember"
+    type: string
+    default: Tenant
+    required: true
+
+  - name: GatewayPrefix
+    prompt: "网关配置前缀（决定 resources/<prefix>-<env>.yaml 的文件名）| Gateway config prefix, names resources/<prefix>-<env>.yaml"
+    type: string
+    default: "gateway-<% .OrgPrefix %>"
     required: true
 
   - name: HTTPPort
-    prompt: HTTP 端口
+    prompt: "文档网关 HTTP 端口 | HTTP port of the docs gateway"
     type: int
-    default: "8080"
+    default: "18080"
 
-  - name: JavaPackage
-    prompt: Java 包名（如 com.kronos.api）
+  - name: DefaultLocale
+    prompt: "校验错误的默认语言（go-argus 内置九种）| Default locale for validation errors (nine built into go-argus)"
+    type: select
+    choices: ["zh", "en", "zh-TW", "ja", "ko", "fr", "de", "es", "ru"]
+    default: "zh"
+
+  - name: PipelineRepo
+    prompt: "复用型工作流仓库（PR 通知与代码质量检查复用它；不用 CI 可删 .github/workflows）| Reusable-workflow repository used by the notify and code-quality jobs"
     type: string
-    default: "com.[[ .OrgPrefix ]].api"
+    default: kamalyes/deploy-pipeline
     required: true
 
-  - name: ProtoPackage
-    prompt: Proto 包名前缀（如 kronos.api）
-    type: string
-    default: "[[ .OrgPrefix ]].api"
-    required: true
-
-  - name: ExampleServiceName
-    prompt: 示例服务名称（PascalCase，如 Health）
-    type: string
-    default: Health
-    required: true
-
+# ============================================================================
+# 忽略规则 | Ignore rules
+# ============================================================================
 ignore:
   - "kopy.yaml"
+  # 模板自身的说明文档：rename 后在此被忽略，只忽略根目录那一份
+  # 带结尾斜杠的模式只做前缀匹配，不会连带忽略子目录里的同名文件。
+  # [EN] The template's own README: renamed then ignored. The trailing slash makes
+  # this a prefix match, so same-named files in subdirectories survive
+  - "__kopy_template_doc__/"
+  - ".git/"
   - ".git/**"
-  - "*.md"
+  - ".DS_Store"
 
+# ============================================================================
+# 重命名规则 | Rename rules
+#
+# 顺序敏感：规则按顺序对同一个路径字符串做 ReplaceAll
+#   1. 先把模板自述改名成忽略标记，使它不进入生成项目
+#   2-4. 三份文档模板落位成生成项目的 README.md / README.en.md / API_GENERATE.md
+#   5+. 占位目录名替换成模板变量
+# 注意 "__module2__" 不含子串 "__module__"，两条规则互不干扰。
+#
+# [EN] Order matters: rules run as sequential ReplaceAll calls on the same path
+#   1. Rename the template's own README to an ignore marker
+#   2-4. Materialize the three doc templates in the generated project
+#   5+. Replace placeholder directory names with template variables
+# Note "__module2__" does not contain "__module__", so the rules never collide
+# ============================================================================
 rename:
+  - pattern: "README.md"
+    value: "__kopy_template_doc__"
+  - pattern: "readme-en.tpl"
+    value: "README.en.md"
+  - pattern: "readme.tpl"
+    value: "README.md"
+  - pattern: "api-generate.tpl"
+    value: "API_GENERATE.md"
+  - pattern: "__module3__"
+    value: "<% .MixedModule %>"
+  - pattern: "__service3__"
+    value: "<% .MixedService | snake %>"
+  - pattern: "__module2__"
+    value: "<% .SecondModule %>"
+  - pattern: "__service2__"
+    value: "<% .SecondService | snake %>"
+  - pattern: "__module__"
+    value: "<% .ExampleModule %>"
+  - pattern: "__service__"
+    value: "<% .ExampleService | snake %>"
   - pattern: "__project_name__"
-    value: "[[ .ProjectName ]]"
+    value: "<% .ProjectName %>"
   - pattern: "__org_prefix__"
-    value: "[[ .OrgPrefix ]]"
-  - pattern: "__example_service__"
-    value: "[[ .ExampleServiceName | snake ]]"
+    value: "<% .OrgPrefix %>"
   - pattern: "__gateway_prefix__"
-    value: "[[ .GatewayPrefix ]]"
+    value: "<% .GatewayPrefix %>"
 
+# ============================================================================
+# 生命周期钩子 | Lifecycle hooks
+#
+# 注意：当前版本的 kopy 还没有执行 hooks（bootstrap/new.go 未调用），
+# 这里先声明好，等 kopy 支持后即可自动初始化；在那之前请按生成项目 README 的
+# 「首次初始化」章节手动执行。
+#
+# [EN] The current kopy release does not execute hooks yet; the declaration is
+# future-proofing. Until then follow the generated README's first-run section
+# ============================================================================
 hooks:
   after:
     - go mod tidy
+    - bash scripts/setup-all.sh --no-pause
+    - bash scripts/generate-modular.sh
