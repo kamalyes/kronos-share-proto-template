@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option go_package = "<% .ModuleName %>/pb/enums";
+option java_package = "<% .JavaPackage %>.enums";
+package <% .ProtoPackage %>.enums;
+
+// <% .ExampleModule %> 模块枚举 | <% .ExampleModule %> module enums
+// 枚举统一放在 proto/enums/ 下并注册到 enums.proto，禁止写在业务服务文件里。
+// [EN] Enums live in proto/enums/ and are registered in enums.proto, never inside a service file
+
+// <% .ExampleService | pascal %> 类型。
+// [EN] <% .ExampleService | pascal %> type
+enum <% .ExampleService | pascal %>Type {
+  <% .ExampleService | snake | upper %>_TYPE_UNSPECIFIED = 0;  // 未指定 | [EN] Unspecified
+  <% .ExampleService | snake | upper %>_TYPE_PERSONAL = 1;     // 个人 | [EN] Personal
+  <% .ExampleService | snake | upper %>_TYPE_ORGANIZATION = 2; // 组织 | [EN] Organization
+}
+
+// <% .ExampleService | pascal %> 等级。
+// [EN] <% .ExampleService | pascal %> level
+enum <% .ExampleService | pascal %>Level {
+  <% .ExampleService | snake | upper %>_LEVEL_UNSPECIFIED = 0; // 未指定 | [EN] Unspecified
+  <% .ExampleService | snake | upper %>_LEVEL_BRONZE = 1;      // 青铜 | [EN] Bronze
+  <% .ExampleService | snake | upper %>_LEVEL_SILVER = 2;      // 白银 | [EN] Silver
+  <% .ExampleService | snake | upper %>_LEVEL_GOLD = 3;        // 黄金 | [EN] Gold
+}

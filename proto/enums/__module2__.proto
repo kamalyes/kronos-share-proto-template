@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "<% .ModuleName %>/pb/enums";
+option java_package = "<% .JavaPackage %>.enums";
+package <% .ProtoPackage %>.enums;
+
+// <% .SecondModule %> 模块枚举 | <% .SecondModule %> module enums
+
+// <% .SecondService | pascal %> 分类。
+// [EN] <% .SecondService | pascal %> category
+enum <% .SecondService | pascal %>Category {
+  <% .SecondService | snake | upper %>_CATEGORY_UNSPECIFIED = 0; // 未指定 | [EN] Unspecified
+  <% .SecondService | snake | upper %>_CATEGORY_STANDARD = 1;    // 标准 | [EN] Standard
+  <% .SecondService | snake | upper %>_CATEGORY_PREMIUM = 2;     // 高级 | [EN] Premium
+}

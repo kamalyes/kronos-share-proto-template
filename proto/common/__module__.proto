@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "proto/enums/enums.proto";
+
+option go_package = "<% .ModuleName %>/pb/common";
+option java_package = "<% .JavaPackage %>.common";
+package <% .ProtoPackage %>.common;
+
+// <% .ExampleModule %> 模块公共消息 | <% .ExampleModule %> module common messages
+// 跨模块复用的实体必须放在 proto/common/ 下，禁止在各服务文件里各写一份。
+// [EN] Entities reused across modules live in proto/common/, never duplicated per service
+
+//===========================  <% .ExampleService | pascal %> 公共消息定义 | <% .ExampleService | pascal %> Common Message Definitions  ==========================//
+
+// <% .ExampleService | pascal %> 信息。
+// [EN] <% .ExampleService | pascal %> information
+// 作为查询、列表、创建响应的统一出参，避免三个接口三套字段。
+// [EN] One shape for get/list/create responses instead of three divergent ones
+message <% .ExampleService | pascal %>Info {
+  string id = 1;                                      // 主键ID | [EN] Primary key ID
+  string tenant_id = 2;                               // 租户ID | [EN] Tenant ID
+  string platform_id = 3;                             // 平台ID | [EN] Platform ID
+  string region_id = 4;                               // 地区ID | [EN] Region ID
+  string name = 5;                                    // 名称 | [EN] Name
+  string code = 6;                                    // 编码 | [EN] Code
+  enums.<% .ExampleService | pascal %>Type type = 7;  // 类型 | [EN] Type
+  enums.<% .ExampleService | pascal %>Level level = 8; // 等级 | [EN] Level
+  enums.CommonStatus status = 9;                      // 状态 | [EN] Status
+  <% .ExampleService | pascal %>Contact contact = 10; // 联系方式 | [EN] Contact
+  repeated string tags = 11;                          // 标签列表 | [EN] Tag list
+  map<string, string> extra = 12;                     // 扩展字段 | [EN] Extra fields
+  google.protobuf.Timestamp created_at = 13;          // 创建时间 | [EN] Created at
+  google.protobuf.Timestamp updated_at = 14;          // 更新时间 | [EN] Updated at
+}
+
+// <% .ExampleService | pascal %> 联系方式。
+// [EN] <% .ExampleService | pascal %> contact
+// 嵌套消息示例：把高内聚的字段收成一个子结构，比平铺 5 个字段更好演进。
+// [EN] Nested message example: group cohesive fields instead of flattening them
+message <% .ExampleService | pascal %>Contact {
+  string email = 1;                                   // 邮箱 | [EN] Email  @inject_tag: validate:"omitempty,email"
+  string phone = 2;                                   // 手机号 | [EN] Phone number  @inject_tag: validate:"omitempty,e164"
+  string address = 3;                                 // 地址 | [EN] Address  @inject_tag: validate:"omitempty,max=255"
+}

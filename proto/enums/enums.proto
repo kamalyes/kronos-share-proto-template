@@ -1,21 +1,29 @@
 syntax = "proto3";
 
-option go_package = "[[ .ModuleName ]]/pb/enums";
-option java_package = "[[ .JavaPackage ]].enums";
-package [[ .ProtoPackage ]].enums;
+option go_package = "<% .ModuleName %>/pb/enums";
+option java_package = "<% .JavaPackage %>.enums";
+package <% .ProtoPackage %>.enums;
 
-// 通用状态
-// [EN] Common status
-enum CommonStatus {
-  COMMON_STATUS_UNSPECIFIED = 0;  // 未指定 | [EN] Unspecified
-  COMMON_STATUS_NORMAL = 1;       // 正常 | [EN] Normal
-  COMMON_STATUS_DISABLED = 2;     // 禁用 | [EN] Disabled
-}
+// 枚举类型聚合文件 - 公开导入所有子模块。
+// [EN] Enum types aggregation file - public imports all sub-modules
+// 其他服务只需 import "proto/enums/enums.proto" 即可访问所有枚举。
+// [EN] Other services only need to import "proto/enums/enums.proto" to access all enums
+//
+// 新增枚举文件后必须在这里注册，否则业务服务拿不到。
+// [EN] A new enum file must be registered here or service files cannot see it
 
-// 布尔值枚举
-// [EN] True or false enum
-enum TrueOrFalse {
-  TOF_UNKNOWN = 0;                // 未知 | [EN] Unknown
-  TOF_TRUE = 1;                   // 是 | [EN] True
-  TOF_FALSE = 2;                  // 否 | [EN] False
-}
+// 通用状态枚举。
+// [EN] Common status enums
+import public "proto/enums/status.proto";
+
+// <% .ExampleModule %> 模块枚举。
+// [EN] <% .ExampleModule %> module enums
+import public "proto/enums/<% .ExampleModule %>.proto";
+
+// <% .SecondModule %> 模块枚举。
+// [EN] <% .SecondModule %> module enums
+import public "proto/enums/<% .SecondModule %>.proto";
+
+// <% .MixedModule %> 模块枚举。
+// [EN] <% .MixedModule %> module enums
+import public "proto/enums/<% .MixedModule %>.proto";

@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "proto/common/common.proto";
+import "proto/enums/enums.proto";
+
+option go_package = "<% .ModuleName %>/pb/<% .SecondModule %>";
+option java_package = "<% .JavaPackage %>.<% .SecondModule %>";
+package <% .ProtoPackage %>.<% .SecondModule %>;
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "<% .OrgPrefix | pascal %> <% .SecondService | pascal %> Service"
+    description: "<% .SecondService | pascal %> 管理服务（第二个 CRUD 示例，演示跨模块复用 common/enums） | <% .SecondService | pascal %> management service (second CRUD example, shows cross-module reuse of common/enums)"
+    version: "1.0.0"
+  }
+  tags: [
+    {
+      name: "<% .SecondService | pascal %>Management"
+      description: "<% .SecondService | pascal %> 管理 | <% .SecondService | pascal %> Management"
+    }
+  ]
+};
+
+//===========================  <% .SecondService | pascal %> 消息定义 | <% .SecondService | pascal %> Message Definitions  ==========================//
+
+// 创建<% .SecondService | pascal %>请求。
+// [EN] Create <% .SecondService | pascal %> request
+message <% .SecondService | pascal %>CreateRequest {
+  string tenant_id = 1;                                        // 租户ID | [EN] Tenant ID @inject_tag: validate:"required,tenant_id"
+  string name = 2;                                             // 名称 | [EN] Name @inject_tag: validate:"required,min=2,max=64"
+  string code = 3;                                             // 编码 | [EN] Code @inject_tag: validate:"required,min=2,max=32"
+  string icon_url = 4;                                         // 图标地址 | [EN] Icon URL  @inject_tag: validate:"omitempty,url"
+  enums.<% .SecondService | pascal %>Category category = 5;    // 分类 | [EN] Category
+  int32 sort_order = 6;                                        // 排序序号 | [EN] Sort order  @inject_tag: validate:"gte=0,lte=9999"
+}
+
+// 创建<% .SecondService | pascal %>响应。
+// [EN] Create <% .SecondService | pascal %> response
+message <% .SecondService | pascal %>CreateResponse {
+  common.<% .SecondService | pascal %>Info info = 1;           // <% .SecondService | pascal %>信息 | [EN] <% .SecondService | pascal %> info
+}
+
+// 获取<% .SecondService | pascal %>详情请求。
+// [EN] Get <% .SecondService | pascal %> detail request
+message <% .SecondService | pascal %>GetRequest {
+  string <% .SecondService | snake %>_id = 1;                  // <% .SecondService | pascal %>ID | [EN] <% .SecondService | pascal %> ID @inject_tag: validate:"required"
+}
+
+// 获取<% .SecondService | pascal %>详情响应。
+// [EN] Get <% .SecondService | pascal %> detail response
+message <% .SecondService | pascal %>GetResponse {
+  common.<% .SecondService | pascal %>Info info = 1;           // <% .SecondService | pascal %>信息 | [EN] <% .SecondService | pascal %> info
+}
+
+// <% .SecondService | pascal %>列表请求。
+// [EN] <% .SecondService | pascal %> list request
+message <% .SecondService | pascal %>ListRequest {
+  common.Paging page_request = 1;                              // 分页请求 | [EN] Page request @inject_tag: validate:"required"
+  common.Sorting sort = 2;                                     // 排序 | [EN] Sorting
+  google.protobuf.StringValue keyword = 3;                     // 搜索关键词 | [EN] Search keyword
+  enums.<% .SecondService | pascal %>Category category = 4;    // 分类 | [EN] Category
+  enums.CommonStatus status = 5;                               // 状态 | [EN] Status
+}
+
+// <% .SecondService | pascal %>列表响应。
+// [EN] <% .SecondService | pascal %> list response
+message <% .SecondService | pascal %>ListResponse {
+  common.Paging page_response = 1;                             // 分页响应 | [EN] Page response
+  repeated common.<% .SecondService | pascal %>Info infos = 2;  // <% .SecondService | pascal %>信息列表 | [EN] <% .SecondService | pascal %> info list
+}
+
+// 更新<% .SecondService | pascal %>请求。
+// [EN] Update <% .SecondService | pascal %> request
+message <% .SecondService | pascal %>UpdateRequest {
+  string <% .SecondService | snake %>_id = 1;                  // <% .SecondService | pascal %>ID | [EN] <% .SecondService | pascal %> ID @inject_tag: validate:"required"
+  google.protobuf.StringValue name = 2;                        // 名称 | [EN] Name
+  google.protobuf.StringValue icon_url = 3;                    // 图标地址 | [EN] Icon URL
+  google.protobuf.Int32Value sort_order = 4;                   // 排序序号 | [EN] Sort order
+  enums.<% .SecondService | pascal %>Category category = 5;    // 分类 | [EN] Category
+}
+
+// 更新<% .SecondService | pascal %>响应。
+// [EN] Update <% .SecondService | pascal %> response
+message <% .SecondService | pascal %>UpdateResponse {
+  common.<% .SecondService | pascal %>Info info = 1;           // <% .SecondService | pascal %>信息 | [EN] <% .SecondService | pascal %> info
+}
+
+// 启停<% .SecondService | pascal %>请求。
+// [EN] Toggle <% .SecondService | pascal %> request
+message <% .SecondService | pascal %>UpdateStatusRequest {
+  string <% .SecondService | snake %>_id = 1;                  // <% .SecondService | pascal %>ID | [EN] <% .SecondService | pascal %> ID @inject_tag: validate:"required"
+  enums.CommonStatus status = 2;                               // 状态 | [EN] Status @inject_tag: validate:"required"
+}
+
+// 删除<% .SecondService | pascal %>请求。
+// [EN] Delete <% .SecondService | pascal %> request
+message <% .SecondService | pascal %>DeleteRequest {
+  string <% .SecondService | snake %>_id = 1;                  // <% .SecondService | pascal %>ID | [EN] <% .SecondService | pascal %> ID @inject_tag: validate:"required"
+}
+
+//===========================  服务定义 | Service Definition  ==========================//
+
+// <% .SecondService | pascal %> 管理服务。
+// [EN] <% .SecondService | pascal %> management service
+service <% .SecondService | pascal %>Service {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    description: "<% .SecondService | pascal %> 管理服务（第二个 CRUD 示例） | <% .SecondService | pascal %> management service (second CRUD example)"
+  };
+
+  // 创建<% .SecondService | pascal %>
+  // [EN] Create <% .SecondService | pascal %>
+  rpc <% .SecondService | pascal %>Create(<% .SecondService | pascal %>CreateRequest) returns (<% .SecondService | pascal %>CreateResponse) {
+    option (google.api.http) = {
+      post: "/v1/<% .SecondModule %>/<% .SecondService | kebab %>s"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "创建<% .SecondService | pascal %> | Create <% .SecondService | pascal %>"
+      tags: "<% .SecondService | pascal %>Management"
+    };
+  }
+
+  // 获取<% .SecondService | pascal %>详情。
+  // [EN] Get <% .SecondService | pascal %> detail
+  rpc <% .SecondService | pascal %>Get(<% .SecondService | pascal %>GetRequest) returns (<% .SecondService | pascal %>GetResponse) {
+    option (google.api.http) = {
+      get: "/v1/<% .SecondModule %>/<% .SecondService | kebab %>s/{<% .SecondService | snake %>_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "获取<% .SecondService | pascal %>详情 | Get <% .SecondService | pascal %> detail"
+      tags: "<% .SecondService | pascal %>Management"
+    };
+  }
+
+  // <% .SecondService | pascal %>列表。
+  // [EN] <% .SecondService | pascal %> list
+  rpc <% .SecondService | pascal %>List(<% .SecondService | pascal %>ListRequest) returns (<% .SecondService | pascal %>ListResponse) {
+    option (google.api.http) = {
+      get: "/v1/<% .SecondModule %>/<% .SecondService | kebab %>s"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "<% .SecondService | pascal %>列表 | <% .SecondService | pascal %> list"
+      tags: "<% .SecondService | pascal %>Management"
+    };
+  }
+
+  // 更新<% .SecondService | pascal %>
+  // [EN] Update <% .SecondService | pascal %>
+  rpc <% .SecondService | pascal %>Update(<% .SecondService | pascal %>UpdateRequest) returns (<% .SecondService | pascal %>UpdateResponse) {
+    option (google.api.http) = {
+      put: "/v1/<% .SecondModule %>/<% .SecondService | kebab %>s/{<% .SecondService | snake %>_id}"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "更新<% .SecondService | pascal %> | Update <% .SecondService | pascal %>"
+      tags: "<% .SecondService | pascal %>Management"
+    };
+  }
+
+  // 启停<% .SecondService | pascal %>（局部更新，复用通用空响应）。
+  // [EN] Toggle <% .SecondService | pascal %> (partial update, reuses the shared empty response)
+  rpc <% .SecondService | pascal %>UpdateStatus(<% .SecondService | pascal %>UpdateStatusRequest) returns (common.GeneralEmptyResponse) {
+    option (google.api.http) = {
+      patch: "/v1/<% .SecondModule %>/<% .SecondService | kebab %>s/{<% .SecondService | snake %>_id}/status"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "启停<% .SecondService | pascal %> | Toggle <% .SecondService | pascal %>"
+      tags: "<% .SecondService | pascal %>Management"
+    };
+  }
+
+  // 删除<% .SecondService | pascal %>
+  // [EN] Delete <% .SecondService | pascal %>
+  rpc <% .SecondService | pascal %>Delete(<% .SecondService | pascal %>DeleteRequest) returns (common.GeneralEmptyResponse) {
+    option (google.api.http) = {
+      delete: "/v1/<% .SecondModule %>/<% .SecondService | kebab %>s/{<% .SecondService | snake %>_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "删除<% .SecondService | pascal %> | Delete <% .SecondService | pascal %>"
+      tags: "<% .SecondService | pascal %>Management"
+    };
+  }
+}

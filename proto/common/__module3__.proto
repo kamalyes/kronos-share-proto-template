@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "proto/enums/enums.proto";
+
+option go_package = "<% .ModuleName %>/pb/common";
+option java_package = "<% .JavaPackage %>.common";
+package <% .ProtoPackage %>.common;
+
+// <% .MixedModule %> 模块公共消息 | <% .MixedModule %> module common messages
+//
+// 这个模块下有两个 service（聚合根与成员），它们都要用这里的实体
+// 放在 common/ 而不是其中一个 service 文件里，否则另一个 service 得跨文件 import 业务模块，
+// 两个 service 就被焊在一起了
+//
+// [EN] This module hosts two services (the aggregate root and its members) and both need
+// these entities. Keeping them in common/ instead of one of the service files prevents the
+// two services from importing each other and welding together.
+
+//===========================  <% .MixedService | pascal %> 公共消息定义 | <% .MixedService | pascal %> Common Message Definitions  ==========================//
+
+// <% .MixedService | pascal %> 信息（聚合根）
+// [EN] <% .MixedService | pascal %> information (aggregate root)
+message <% .MixedService | pascal %>Info {
+  string id = 1;                                                      // 主键ID | [EN] Primary key ID
+  string code = 2;                                                    // 编码（全局唯一）| [EN] Code, globally unique
+  string name = 3;                                                    // 名称 | [EN] Name
+  enums.<% .MixedService | pascal %>Status status = 4;                // 状态 | [EN] Status
+  enums.<% .MixedService | pascal %>SyncState sync_state = 5;         // 下游同步状态 | [EN] Downstream sync state
+  string platform_id = 6;                                             // 平台ID | [EN] Platform ID
+  string region_id = 7;                                               // 地区ID | [EN] Region ID
+  int32 member_count = 8;                                             // 成员数（聚合统计）| [EN] Member count
+  repeated <% .MixedService | pascal %>RegionAssignment regions = 9;  // 地区分配 | [EN] Region assignments
+  google.protobuf.Timestamp created_at = 10;                          // 创建时间 | [EN] Created at
+  google.protobuf.Timestamp updated_at = 11;                          // 更新时间 | [EN] Updated at
+}
+
+// 地区分配（子资源）
+// [EN] Region assignment (sub-resource)
+// 子资源有自己的 ID，是因为它要被单独更新和移除；只读的附属数据不需要 ID
+// [EN] A sub-resource carries its own ID because it is updated and removed individually;
+// read-only attached data does not need one
+message <% .MixedService | pascal %>RegionAssignment {
+  string id = 1;                                     // 分配ID | [EN] Assignment ID
+  string region_id = 2;                              // 地区ID | [EN] Region ID
+  bool primary = 3;                                  // 是否主地区 | [EN] Whether primary
+  google.protobuf.Timestamp assigned_at = 4;         // 分配时间 | [EN] Assigned at
+}
+
+// 成员信息
+// [EN] Member information
+message <% .MixedService | pascal %>MemberInfo {
+  string id = 1;                                                    // 成员ID | [EN] Member ID
+  string <% .MixedService | snake %>_id = 2;                        // 所属<% .MixedService | pascal %>ID | [EN] Owning <% .MixedService | pascal %> ID
+  string user_id = 3;                                               // 用户ID | [EN] User ID
+  string display_name = 4;                                          // 显示名 | [EN] Display name
+  string email = 5;                                                 // 邮箱 | [EN] Email
+  repeated enums.<% .MixedService | pascal %>MemberRole roles = 6;  // 角色列表 | [EN] Role list
+  enums.CommonStatus status = 7;                                    // 状态 | [EN] Status
+  google.protobuf.Timestamp joined_at = 8;                          // 加入时间 | [EN] Joined at
+}

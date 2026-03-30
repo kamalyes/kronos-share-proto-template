@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "proto/enums/enums.proto";
+
+option go_package = "<% .ModuleName %>/pb/common";
+option java_package = "<% .JavaPackage %>.common";
+package <% .ProtoPackage %>.common;
+
+// <% .SecondModule %> 模块公共消息 | <% .SecondModule %> module common messages
+
+//===========================  <% .SecondService | pascal %> 公共消息定义 | <% .SecondService | pascal %> Common Message Definitions  ==========================//
+
+// <% .SecondService | pascal %> 信息。
+// [EN] <% .SecondService | pascal %> information
+message <% .SecondService | pascal %>Info {
+  string id = 1;                                            // 主键ID | [EN] Primary key ID
+  string tenant_id = 2;                                     // 租户ID | [EN] Tenant ID
+  string name = 3;                                          // 名称 | [EN] Name
+  string code = 4;                                          // 编码 | [EN] Code
+  string icon_url = 5;                                      // 图标地址 | [EN] Icon URL
+  enums.<% .SecondService | pascal %>Category category = 6; // 分类 | [EN] Category
+  enums.CommonStatus status = 7;                            // 状态 | [EN] Status
+  int32 sort_order = 8;                                     // 排序序号 | [EN] Sort order
+  google.protobuf.Timestamp created_at = 9;                 // 创建时间 | [EN] Created at
+  google.protobuf.Timestamp updated_at = 10;                // 更新时间 | [EN] Updated at
+}
