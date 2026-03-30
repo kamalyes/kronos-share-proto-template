@@ -1,0 +1,309 @@
+# <% .ProjectName %> - gRPC Contract Hub
+
+**English** | [简体中文](./README.md)
+
+> `<% .ProjectName %>` is the **single source of truth** for the <% .OrgPrefix | pascal %> platform's contracts: every gRPC service, message and enum is defined here, and protoc turns them into Go structs, gRPC client/server stubs, gRPC-Gateway reverse proxies and OpenAPI documents in one pass. Downstream services just `go get` this repository to obtain a strongly typed client instead of maintaining their own DTOs.
+
+[![Go](https://img.shields.io/github/go-mod/go-version/<% .OrgName %>/<% .ProjectName %>)](https://golang.org/)
+[![gRPC](https://img.shields.io/badge/gRPC-grpc--gateway%20v2-244c5a.svg?logo=grpc)](https://github.com/grpc-ecosystem/grpc-gateway)
+[![Protobuf](https://img.shields.io/badge/protobuf-proto3-blue.svg)](https://protobuf.dev/)
+[![Validation](https://img.shields.io/badge/validation-go--argus-7c3aed.svg)](https://github.com/kamalyes/go-argus)
+[![CI](https://github.com/<% .OrgName %>/<% .ProjectName %>/actions/workflows/generate-pb.yml/badge.svg)](https://github.com/<% .OrgName %>/<% .ProjectName %>/actions/workflows/generate-pb.yml)
+[![commit](https://img.shields.io/github/last-commit/<% .OrgName %>/<% .ProjectName %>)](https://github.com/<% .OrgName %>/<% .ProjectName %>/commits)
+[![issues](https://img.shields.io/github/issues/<% .OrgName %>/<% .ProjectName %>)](https://github.com/<% .OrgName %>/<% .ProjectName %>/issues)
+[![license](https://img.shields.io/github/license/<% .OrgName %>/<% .ProjectName %>)](./LICENSE)
+
+## 📚 Navigation
+
+- [🏠 Repository](https://github.com/<% .OrgName %>/<% .ProjectName %>)
+- [⚙️ Code generation guide](./API_GENERATE.md)
+- [📐 Proto directory conventions](./proto/CONVENTIONS.md)
+- [🎨 Proto style guide](./.vscode/skills/<% .OrgPrefix %>-proto-style/SKILL.md)
+- [✅ Validation rule reference](./.trae/skills/proto-conventions/SKILL.md)
+- [👷 CI/CD pipeline guide](./.github/workflows/GUIDE.md)
+- [🌏 中文说明](./README.md)
+
+## 🚀 Why a contract hub
+
+### ⚡ Features
+
+- **📐 Contract first**: proto is the single source of truth; Go structs, gRPC stubs, HTTP routes and OpenAPI docs all derive from it
+- **🧩 Multi-module layout**: `common/` holds cross-module entities, `enums/` holds every enum, business modules split by bounded context
+- **🔁 Full CRUD examples**: two example modules cover POST / GET / paged list / PUT / PATCH / DELETE / batch operations
+- **🧬 Mixed module example**: `proto/<% .MixedModule %>/` hosts two services in one module, mixing CRUD, action endpoints (retry-sync) and sub-resources (region-assignments)
+- **🏷️ Validation lives in the contract**: `@inject_tag: validate:"..."` in field comments becomes a struct tag enforced at runtime by go-argus
+- **🌐 Gateway docs aggregation**: generated swagger files are merged into one browsable site with per-audience entries
+- **🤖 Automatic pb generation**: once proto changes land on `<% .BaseBranch %>`, CI regenerates and commits pb; on a PR it first verifies the two are in sync
+- **🈶 Bilingual comment conventions**: every message, field and RPC reads "中文 | [EN] English", so mixed-language teams can both work
+- **🔌 Ready-made validation interceptor**: wire `validation.UnaryServerInterceptor` once and every new RPC is covered automatically
+
+### Why generated code is committed
+
+Downstream services pin this repository by commit hash: without `pb/` in the tree they
+would `go get` a module containing no Go code at all. Committing the output brings two
+bonuses: contract changes show up as reviewable diffs in pull requests, and anyone can
+clone and build without installing protoc.
+
+## ⚠️ Important conventions
+
+| Convention | Detail |
+| --- | --- |
+| Never hand-edit `pb/` | Every run overwrites it; change the proto instead |
+| Generate before tidy | `pb/` starts empty, so `go mod tidy` fails first; see "First run" below |
+| Register every new module | Add it to `PROTO_SERVICE_MODULES` in `scripts/generate-modular.sh|bat` or it is never generated |
+| Tag required fields | A field without `@inject_tag` is simply unvalidated; the interceptor lets it through |
+| Never reuse field numbers | Mark removed fields `reserved`, or old clients decode garbage |
+| Extract shared types | Messages and enums used by two or more modules belong in `common/` and `enums/`, registered in the aggregation files |
+
+## 🏗️ Project layout
+
+```text
+<% .ProjectName %>/
+├── proto/                              # contract definitions (single source of truth)
+│   ├── common/                         # messages reused across modules
+│   │   ├── common.proto                # aggregation file (import public)
+│   │   ├── pagination.proto            # Paging / Sorting
+│   │   ├── result.proto                # Result / Error / BatchResult
+│   │   ├── empty.proto                 # GeneralEmptyRequest / Response
+│   │   ├── <% .ExampleModule %>.proto  # <% .ExampleService | pascal %> entity and nested messages
+│   │   └── <% .SecondModule %>.proto   # <% .SecondService | pascal %> entity
+│   ├── enums/                          # every enum
+│   │   ├── enums.proto                 # aggregation file
+│   │   ├── status.proto                # CommonStatus / TrueOrFalse / SortDirection
+│   │   ├── <% .ExampleModule %>.proto  # <% .ExampleService | pascal %> enums
+│   │   └── <% .SecondModule %>.proto   # <% .SecondService | pascal %> enums
+│   ├── <% .ExampleModule %>/           # example module #1: full CRUD
+│   ├── <% .SecondModule %>/            # example module #2: full CRUD + cross-module reuse
+│   ├── <% .MixedModule %>/             # mixed module: two services + actions + sub-resources
+│   │   ├── <% .MixedService | snake %>_service.proto         # aggregate root
+│   │   └── <% .MixedService | snake %>_member_service.proto  # members (second service)
+│   └── CONVENTIONS.md                  # directory conventions
+├── pb/                                 # generated Go code (committed, never edited)
+├── validation/                         # go-argus validation layer
+│   ├── validator.go                    # validator, i18n, custom rules, enum validation
+│   ├── interceptor.go                  # gRPC interceptor + IP allowlist
+│   ├── validator_test.go               # unit tests for the layer
+│   └── contract_test.go                # inject-tags contract test
+├── scripts/                            # generation and environment setup (.sh / .bat)
+├── resources/                          # gateway configuration per environment
+├── bootstrap/                          # docs gateway launcher (deletable)
+├── swagger_embed.go                    # swagger embedding (only built with -tags swagger)
+└── .github/workflows/                  # pb auto-generation + CI/CD + PR notifications
+```
+
+## 📦 Quick start
+
+### Requirements
+
+| Tool | Version | Purpose |
+| --- | --- | --- |
+| Go | >= <% .GoVersion %> | plugins and compilation |
+| protoc | 24.3 | installed into `GOPATH/bin` by `scripts/setup-all.sh` |
+| bash / cmd | — | Windows uses the matching `.bat` scripts |
+
+### First run
+
+The order is not interchangeable: while `pb/` is empty, `go mod tidy` cannot resolve
+`<% .ModuleName %>/pb/...`
+
+```bash
+bash scripts/setup-all.sh --no-pause     # install protoc + 5 plugins + googleapis
+bash scripts/generate-modular.sh         # generate pb / gateway / swagger and inject tags
+go mod tidy                              # pb/ now exists, so dependencies resolve
+go build ./... && go test ./...
+git add -A && git commit -m "chore: bootstrap share proto"
+```
+
+On Windows replace `.sh` with `.bat` and run them from `cmd` or PowerShell.
+
+### Run the docs gateway
+
+```bash
+go run ./bootstrap
+# open http://127.0.0.1:<% .HTTPPort %>/swagger
+```
+
+Projects that only need the artifacts can delete `bootstrap/`, `resources/` and
+`swagger_embed*.go`.
+
+## 🧩 The three example modules
+
+| Module | Role | HTTP methods covered |
+| --- | --- | --- |
+| `proto/<% .ExampleModule %>/` | Full CRUD example including batch operations | POST / GET / GET list / PUT / PATCH / DELETE / POST batch |
+| `proto/<% .SecondModule %>/` | Second CRUD, shows reuse of common and enums | POST / GET / GET list / PUT / PATCH / DELETE |
+| `proto/<% .MixedModule %>/` | Mixed module: two services in one module sharing module-level entities and enums | POST / GET / GET list / PUT / DELETE + actions + sub-resources |
+
+Endpoint shape of the `<% .ExampleModule %>` module:
+
+```text
+POST   /v1/<% .ExampleModule %>/<% .ExampleService | kebab %>s                      create
+GET    /v1/<% .ExampleModule %>/<% .ExampleService | kebab %>s                      list (paging + sorting + filters)
+GET    /v1/<% .ExampleModule %>/<% .ExampleService | kebab %>s/{id}                 get
+PUT    /v1/<% .ExampleModule %>/<% .ExampleService | kebab %>s/{id}                 full update
+PATCH  /v1/<% .ExampleModule %>/<% .ExampleService | kebab %>s/{id}/status          partial status update
+DELETE /v1/<% .ExampleModule %>/<% .ExampleService | kebab %>s/{id}                 delete
+POST   /v1/<% .ExampleModule %>/<% .ExampleService | kebab %>s/batch-delete         batch delete (per-item results)
+```
+
+Endpoint shape of the mixed module — the layout real projects converge on:
+
+```text
+POST   /v1/<% .MixedModule %>/<% .MixedService | kebab %>s                                   create the aggregate root
+GET    /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}                              get
+PUT    /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}                              update
+DELETE /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}                              delete
+POST   /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/retry-sync                   action: retry downstream sync
+POST   /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/region-assignments           sub-resource: assign a region
+PUT    /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/region-assignments/{aid}     sub-resource: update
+DELETE /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/region-assignments/{aid}     sub-resource: remove
+GET    /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/members                      second service: member list
+POST   /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/members                      add member
+DELETE /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/members/{mid}                remove member
+PUT    /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/members/{mid}/roles          action: replace roles
+POST   /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/members/batch-invite         batch invite
+```
+
+To drop a module, delete its directory and also remove its entry from
+`scripts/generate-modular.sh|bat`, its embed from `swagger_embed.go` and its aggregation
+entry from `resources/<% .GatewayPrefix %>-dev.yaml`.
+
+## ⚙️ Code generation
+
+```bash
+bash scripts/generate-modular.sh
+```
+
+One command chains five steps:
+
+```text
+1. setup-all.sh          verify protoc and plugin versions (skipped when present)
+2. protoc --go_out       pb/<module>/*.pb.go          Go structs
+   protoc --go-grpc_out  pb/<module>/*_grpc.pb.go     gRPC client/server
+3. protoc --grpc-gateway_out  pb/<module>/*.pb.gw.go  HTTP reverse proxy
+4. protoc --openapiv2_out     proto/<module>/*.swagger.yaml  OpenAPI documents
+5. inject-tags.sh        turn @inject_tag into struct tags (validate/json/swagger)
+```
+
+See [API_GENERATE.md](./API_GENERATE.md) for details.
+
+## ✅ Validation layer (go-argus)
+
+Field rules live in proto comments and are enforced at runtime by
+[go-argus](https://github.com/kamalyes/go-argus) under [`validation/`](./validation) —
+zero dependencies, a zero-reflection fast path and nine built-in locales.
+
+```protobuf
+string tenant_id = 1;   // 租户ID | [EN] Tenant ID @inject_tag: validate:"required,tenant_id"
+string name = 2;        // 名称 | [EN] Name @inject_tag: validate:"required,min=2,max=64"
+string icon_url = 3;    // 图标 | [EN] Icon URL @inject_tag: validate:"omitempty,url"
+```
+
+### Wiring it into a gRPC server
+
+```go
+import "<% .ModuleName %>/validation"
+
+server := grpc.NewServer(
+    grpc.UnaryInterceptor(validation.UnaryServerInterceptor(validation.InterceptorOptions{
+        // Methods that skip validation, e.g. health checks
+        // Methods that skip validation, shaped "/<package>.<module>.<Service>Service/<Method>"
+        SkipMethods: []string{"/<% .ProtoPackage %>.health.HealthService/Check"},
+        // Restrict callers to the cluster; CIDR and wildcards supported, empty disables it
+        AllowedPeerCIDRs: []string{"10.0.0.0/8", "192.168.1.*"},
+    })),
+)
+```
+
+A failure returns `codes.InvalidArgument` with field names and localized descriptions.
+The locale is negotiated from the request's `accept-language`, defaulting to
+`<% .DefaultLocale %>`.
+
+### argus capabilities in use
+
+| Capability | Where |
+| --- | --- |
+| Struct tag validation, nested structs included | `validation.Struct` / `StructCtx` |
+| Localized error messages (nine locales) | `validation.Messages(err, locale)` |
+| Registering extra locales | `registerExtraLocales` in `validation/validator.go` |
+| Custom rules | the `tenant_id` rule in `validation/validator.go` |
+| Generic enum validation | `validation.Enum(...)`, fed with generated enum values |
+| Zero-reflection fast path | `validation.VarString` for single gateway parameters |
+| JSON Schema validation | fallback for third-party callbacks with no proto contract, see the tests |
+| IP allowlist / blocklist | `AllowedPeerCIDRs` on the interceptor |
+
+## 🔌 Using it downstream
+
+```bash
+go get <% .ModuleName %>@latest
+```
+
+```go
+import (
+    "<% .ModuleName %>/pb/<% .ExampleModule %>"
+    "<% .ModuleName %>/pb/common"
+    "<% .ModuleName %>/pb/enums"
+)
+
+client := <% .ExampleModule %>.New<% .ExampleService | pascal %>ServiceClient(conn)
+resp, err := client.<% .ExampleService | pascal %>List(ctx, &<% .ExampleModule %>.<% .ExampleService | pascal %>ListRequest{
+    PageRequest: &common.Paging{Page: 1, Size: 20},
+    Status:      enums.CommonStatus_COMMON_STATUS_NORMAL,
+})
+```
+
+After changing proto: wait for CI to regenerate and commit pb on `<% .BaseBranch %>`, then
+`go get` the new hash downstream. Referencing it before CI finishes pulls the old pb.
+
+## 👷 CI/CD
+
+| Workflow | Trigger | Purpose |
+| --- | --- | --- |
+| `generate-pb.yml` | `proto/**` changes (push / PR / manual) | Regenerate and commit pb; on a PR it only verifies and comments the diff |
+| `pipeline.yml` | push to `dev` / tags / manual | Build, image, deploy, code quality |
+| `pr-opened-notify.yml` | PR opened | Change summary comment and notification |
+| `pr-merged-notify.yml` | PR merged | Merge notification |
+
+Projects without CI can delete `.github/workflows/`. Notifications and quality checks
+reuse the shared workflows from `<% .PipelineRepo %>` and need repository secrets — see
+[.github/PIPELINE_CONFIG.md](./.github/PIPELINE_CONFIG.md).
+
+## 🧰 Scripts
+
+| Script | Purpose |
+| --- | --- |
+| `scripts/setup-all.sh` | Prepare everything: protoc + plugins + googleapis/grpc-gateway |
+| `scripts/setup-dependencies.sh` | Install only protoc and the Go plugins |
+| `scripts/setup-protobuf-includes.sh` | Prepare only the protobuf include files |
+| `scripts/generate-modular.sh` | Generate pb / gateway / swagger per module and inject tags |
+| `scripts/inject-tags.sh` | Run struct tag injection on its own |
+| `scripts/prepare-pb-output.sh` | Clean and prepare the pb output directory |
+| `scripts/build-linux.sh` | Cross-compile the docs gateway binary |
+
+Every script has a `.bat` twin that behaves identically on Windows.
+
+## ❓ FAQ
+
+**`go mod tidy` cannot find `<% .ModuleName %>/pb/...`**
+`pb/` is still empty. Run `bash scripts/generate-modular.sh` first, then `go mod tidy`.
+
+**My new endpoints are missing from the docs site**
+Three places need the module: the list in `scripts/generate-modular.sh|bat`, the embed in
+`swagger_embed.go`, and `aggregate.services` in `resources/<% .GatewayPrefix %>-dev.yaml`.
+
+**Validation does not fire**
+Check that the proto field comment carries `@inject_tag: validate:"..."`, then check the
+struct really got the tag (`grep validate pb/<% .ExampleModule %>/*.pb.go`).
+`validation/contract_test.go` exists to guard exactly this chain.
+
+**Can I drop the bootstrap docs gateway?**
+Yes. Delete `bootstrap/`, `resources/`, `swagger_embed*.go` and the `go-config` /
+`go-rpc-gateway` requirements from go.mod, and the repository becomes pure contracts.
+
+**The `.bat` scripts show mojibake on Windows**
+They already call `chcp 65001`; use a UTF-8 terminal such as Windows Terminal or
+PowerShell 7.
+
+## License
+
+Copyright (c) <% .Year %> by <% .AuthorName %>, All Rights Reserved.

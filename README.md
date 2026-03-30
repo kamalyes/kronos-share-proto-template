@@ -1,238 +1,277 @@
-# [[ .OrgPrefix ]] 服务共享 Protobuf 定义
+# share-proto-template - 通用 gRPC 协议中心工程模板
 
-> 本项目是 [[ .OrgPrefix ]] 微服务生态系统的核心，用于集中管理所有服务的 Protobuf 定义
-> 通过这些定义，我们生成统一的 Go gRPC 代码、HTTP 网关以及 API 文档
+> 这是一个 [kopy](https://github.com/kamalyes/kopy) 模板：`kopy new` 一条命令生成一个**开箱即跑**的 gRPC/Protobuf 协议中心仓库 —— 多模块 proto 组织、protoc 全套生成链路（pb / gRPC / gateway / OpenAPI）、`@inject_tag` 校验注入、[go-argus](https://github.com/kamalyes/go-argus) 运行时校验层、swagger 文档聚合网关、pb 自动生成 CI，以及一整套双语 proto 规范。
+>
+> **完全通用**：组织名、项目名、Go 模块路径、proto/Java 包名、示例模块名、网关前缀、分支名、复用工作流仓库、校验语言全部是模板变量，没有任何写死的组织或业务信息。
+>
+> [EN] A [kopy](https://github.com/kamalyes/kopy) template that scaffolds a ready-to-run gRPC/Protobuf contract hub: multi-module protos, the full protoc pipeline, `@inject_tag` validation injection, a go-argus runtime validation layer, a swagger aggregation gateway, pb auto-generation CI and a complete bilingual proto convention set. Everything organization-specific is a template variable.
 
-## ✨ 功能特性
+[![kopy](https://img.shields.io/badge/kopy-template-7c3aed.svg)](https://github.com/kamalyes/kopy)
+[![Go](https://img.shields.io/badge/Go-%3E%3D1.22-00ADD8.svg?logo=go)](https://golang.org/)
+[![protoc](https://img.shields.io/badge/protoc-24.3-blue.svg)](https://protobuf.dev/)
+[![grpc-gateway](https://img.shields.io/badge/grpc--gateway-v2-244c5a.svg)](https://github.com/grpc-ecosystem/grpc-gateway)
+[![go-argus](https://img.shields.io/badge/validation-go--argus-7c3aed.svg)](https://github.com/kamalyes/go-argus)
+[![license](https://img.shields.io/badge/license-Apache--2.0-green.svg)](./LICENSE)
 
-- **统一接口定义**：使用 Protobuf 作为接口定义语言 (IDL)，确保各服务间通信规范一致
-- **gRPC & RESTful API**：同时支持 gRPC 高性能通信和基于 gRPC-Gateway 的 RESTful HTTP/JSON 接口
-- **模块化结构**：按服务模块组织 `.proto` 文件，结构清晰
-- **自动化代码生成**：提供一键式脚本，自动生成所有需要的 Go 代码、gRPC 网关和 Swagger 文档
-- **结构体标签注入**：通过 `protoc-go-inject-tag` 自动为生成的 Go 结构体注入 `json`, `gorm` 等标签
-- **依赖自动安装**：脚本会自动检测并安装所需的 `protoc` 插件
+## 📚 文档导航 | Navigation
 
-## 📂 项目结构
+- [🧩 kopy 脚手架](https://github.com/kamalyes/kopy)
+- [✅ go-argus 校验库](https://github.com/kamalyes/go-argus)
+- [📦 生成项目的中文说明](./readme.tpl)（渲染后成为 `README.md`）
+- [🌍 生成项目的英文说明](./readme-en.tpl)（渲染后成为 `README.en.md`）
+- [⚙️ 生成链路说明](./api-generate.tpl)（渲染后成为 `API_GENERATE.md`）
+- [🎨 Proto 风格指南](./.vscode/skills/__org_prefix__-proto-style/SKILL.md)
+- [✅ 校验规则速查](./.trae/skills/proto-conventions/SKILL.md)
 
-```bash
-.
-├── bootstrap/            # 服务启动引导程序
-│   ├── main.go              # 主入口文件
-│   ├── server.go            # 服务器配置
-│   └── generate_handler.go  # API 代码生成处理器
-├── deployments/          # 部署相关文件
-├── pb/                   # 生成的 Go 代码存放目录 (按模块划分)
-├── proto/                # Protobuf 源文件 (.proto)，按模块划分
-│   ├── common/              # 公共消息定义
-│   ├── enums/               # 枚举类型定义
-│   └── [[ .ExampleServiceName | snake ]]/  # 示例服务定义
-├── resources/            # 配置文件目录
-│   └── gateway-dev.yaml     # 网关开发环境配置
-├── scripts/              # 自动化脚本
-│   ├── generate-modular.bat/.sh   # 核心代码生成脚本
-│   ├── inject-tags.bat/.sh        # 标签注入脚本
-│   ├── setup-dependencies.bat/.sh # 依赖设置脚本
-│   ├── setup-protobuf-includes.bat/.sh # Protobuf Include 设置
-│   └── run.bat/.sh                # 服务启动脚本
-├── go.mod                # Go 模块定义
-├── swagger_embed.go      # Swagger 文档嵌入
-└── README.md             # 项目说明文档
-```
+## 🚀 为什么需要这个模板 | Why
 
-## 🚀 快速开始
+协议中心的难点从来不是写 proto，而是它周边那一圈：protoc 要装哪个版本、插件怎么配、
+模块按什么顺序生成、struct tag 怎么注入、swagger 怎么聚合、pb 由谁生成并提交、
+新人怎么知道注释该写成什么样每个团队自己摸一遍，就是每个团队都踩一遍同样的坑。
 
-### 1. 环境要求
+[EN] The hard part of a contract hub is never writing proto; it is everything around it:
+which protoc version, how the plugins are wired, in what order modules generate, how
+struct tags get injected, how swagger is aggregated, who regenerates and commits pb, and
+how a newcomer learns what a comment should look like
 
-- **Go**: 版本 `1.22+` 或更高
-- **Protobuf Compiler (`protoc`)**: [官方安装指南](https://grpc.io/docs/protoc-installation/)
+### ⚡ 模板提供什么 | What you get
 
-> **提示**: 项目脚本会自动检测并尝试通过 `go install` 安装所需的 `protoc` 插件
+- **🧱 三个示例模块**: 两个单 service 的完整 CRUD（POST/GET/列表/PUT/PATCH/DELETE/批量）、一个混合模块（一模块两个 service + 动作型 + 子资源）
+- **⚙️ 完整生成链路**: 16 个脚本（.sh/.bat 双版本），protoc 24.3 与 5 个插件版本固定可复现
+- **🏷️ 校验写进契约**: proto 注释里的 `@inject_tag: validate:"..."` 注入成 struct tag，运行时由 go-argus 执行
+- **🔌 现成的校验拦截器**: gRPC 一元拦截器 + i18n 错误消息 + IP 白名单，新增 RPC 自动覆盖
+- **🧪 守链路的契约测试**: 专门验证「@inject_tag 真的变成了 struct tag」，这条链路断了不会有任何报错
+- **🌐 文档聚合网关**: 生成的 swagger 自动聚合成文档站，支持按受众拆分入口
+- **🤖 pb 自动生成 CI**: proto 变更合并后自动生成并提交，PR 阶段先验证同步并把 diff 评论到 PR
+- **📐 双语规范三件套**: 风格指南 + 校验规则速查 + 目录规范，全部中英双语
+- **🈶 中英双语注释**: 每个文件都有 banner 与逐段注释，解释的是「为什么这么做」
 
-### 2. 使用 kopy 生成项目
+## 📦 快速开始 | Quick start
 
-#### 交互模式
+### 环境要求 | Requirements
 
 ```bash
-# 将[[ .ProjectName ]替换为你的真实项目名
-kopy new git@github.com:kamalyes/kronos-share-proto-template.git -o ./[[ .ProjectName ]]
+go install github.com/kamalyes/kopy@latest     # 模板渲染 | render the template
+# protoc 与插件由生成项目的 scripts/setup-all.sh 自动安装，无需手动准备
 ```
 
-交互式问答示例：
-
-```
-❓ 组织名称（如 kamalyes，用于 Go 模块路径 github.com/{org}/{project}） [kamalyes]:
-❓ 组织前缀（如 kronos，用于项目名 {prefix}-share-proto） [kronos]:
-❓ 项目名称（如 kronos-share-proto） [kronos-share-proto]:
-❓ Go 模块路径（如 github.com/kamalyes/kronos-share-proto） [github.com/kamalyes/kronos-share-proto]:
-❓ Go 版本 [1.25]:
-❓ 作者名称 [kamalyes]:
-❓ 作者邮箱 [example@qq.com]:
-❓ 网关配置前缀（如 gateway-kronos） [gateway-kronos]:
-❓ HTTP 端口 [8080]:
-❓ Java 包名（如 com.kronos.api） [com.kronos.api]:
-❓ Proto 包名前缀（如 kronos.api） [kronos.api]:
-❓ 示例服务名称（PascalCase，如 Health） [Health]:
-```
-
-#### 非交互模式
-
-使用 `--var` 参数跳过交互式问答：
+### 生成项目 | Generate
 
 ```bash
-# 将[[ .ProjectName ]替换为你的真实项目名
-kopy new git@github.com:kamalyes/kronos-share-proto-template.git -o ./[[ .ProjectName ]] \
+# 交互式：逐项确认 18 个变量 | interactive
+kopy new @kamalyes/kronos-share-proto-template -o ./my-share-proto
+
+# 非交互：用 --var 跳过全部提问 | non-interactive
+kopy new @kamalyes/kronos-share-proto-template -o ./demo-share-proto \
   --var OrgName=kamalyes \
-  --var OrgPrefix=kronos \
-  --var ServiceType=payment \
-  --var ServiceName=PaymentService \
-  --var ModuleName=payment-service \
-  --var ProjectName=kronos-payment-service \
-  --var AuthorName=kamalyes \
-  --var AuthorEmail=dev@example.com \
+  --var OrgPrefix=demo \
+  --var ProjectName=demo-share-proto \
+  --var ModuleName=github.com/kamalyes/demo-share-proto \
   --var GoVersion=1.25 \
-  --var GatewayPrefix=gateway-payment \
-  --var GRPCPort=9190 \
-  --var HTTPPort=8190 \
-  --var HealthPort=8191 \
-  --var DBName=payment_service \
-  --var CachePrefix=payment: \
-  --var MetricsNamespace=payment \
-  --var UseRedis=true \
-  --var UseAuthInterceptor=true \
-  --var UseSubscriber=false \
-  --var GenerateExample=true \
-  --var ExampleName=Order \
-  --var ShareProtoModule=github.com/kamalyes/kronos-share-proto \
-  --overwrite
+  --var AuthorName=kamalyes \
+  --var AuthorEmail=501893067@qq.com \
+  --var BaseBranch=master \
+  --var ProtoPackage=demo.api \
+  --var JavaPackage=com.kamalyes.demo.api \
+  --var ExampleModule=catalog \
+  --var ExampleService=Product \
+  --var SecondModule=inventory \
+  --var SecondService=Warehouse \
+  --var GatewayPrefix=gateway-demo \
+  --var HTTPPort=18080 \
+  --var DefaultLocale=zh \
+  --var PipelineRepo=kamalyes/deploy-pipeline
+
+# 预览不写盘 | preview without writing
+kopy new ./kronos-share-proto-template -o /tmp/preview --dry-run
+
+# 查看全部变量与默认值 | list variables and defaults
+kopy list ./kronos-share-proto-template
 ```
 
-#### 预览模式
-
-使用 `--dry-run` 仅预览生成结果，不写入文件：
+### 初始化生成出来的项目 | Bootstrap the output
 
 ```bash
-kopy new ./kronos-share-proto-template --dry-run --var OrgName=kamalyes --var OrgPrefix=kronos
+cd demo-share-proto
+bash scripts/setup-all.sh --no-pause     # 装 protoc 24.3 + 5 个插件 + googleapis
+bash scripts/generate-modular.sh         # 生成 pb / gateway / swagger 并注入 tag
+go mod tidy                              # 必须在 generate 之后
+go build ./... && go test ./...
+go run ./bootstrap                        # 文档站 http://127.0.0.1:18080/swagger
 ```
 
-### 3. 生成后步骤
+> ⚠️ 顺序不能换：`pb/` 为空时 `go mod tidy` 解析不到 `<module>/pb/...`
+> 这不是模板缺陷，而是协议仓库的固有顺序（CI 也是这么跑的）。
+>
+> [EN] The order is fixed: while `pb/` is empty, `go mod tidy` cannot resolve `<module>/pb/...`.
+> Not a template defect but the inherent order of a contract repository, and CI does the same.
 
-```bash
-cd [[ .ProjectName ]]
+> ⚠️ 当前版本的 kopy 还**不会执行** `kopy.yaml` 里的 `hooks`，所以上面这几步要手动跑。
+>
+> [EN] The current kopy release does not execute the `hooks` block yet, so run these manually.
 
-# 1. 安装依赖
-go mod tidy
+## 🔧 模板变量 | Template variables
 
-# 2. 下载 Google APIs 和 gRPC-Gateway 依赖
-scripts\setup-dependencies.bat    # Windows
-# bash scripts/setup-dependencies.sh  # Linux/Mac
+| 变量 \| Variable | 类型 | 默认值 \| Default | 说明 \| Description |
+| --- | --- | --- | --- |
+| `OrgName` | string | `kamalyes` | GitHub 组织或用户名，用于模块路径与仓库地址 |
+| `OrgPrefix` | string | `demo` | 项目前缀，决定项目名、proto 包名、swagger 标题 |
+| `ProjectName` | string | `<prefix>-share-proto` | 仓库名 / 目录名 |
+| `ModuleName` | string | `github.com/<org>/<project>` | Go 模块路径，决定所有 `go_package` |
+| `GoVersion` | select | `1.25` | 写入 go.mod |
+| `AuthorName` | string | `kamalyes` | 文件头 banner 与版权行 |
+| `AuthorEmail` | string | `example@qq.com` | 文件头 banner |
+| `BaseBranch` | select | `master` | CI 触发分支、pb 自动生成的目标分支 |
+| `ProtoPackage` | string | `<prefix>.api` | proto 包名前缀，模块名会追加在后面 |
+| `JavaPackage` | string | `com.<org>.<prefix>.api` | Java 包名前缀 |
+| `ExampleModule` | string | `catalog` | 示例模块一的目录名 |
+| `ExampleService` | string | `Product` | 示例模块一的服务名 |
+| `SecondModule` | string | `inventory` | 示例模块二的目录名 |
+| `SecondService` | string | `Warehouse` | 示例模块二的服务名 |
+| `MixedModule` | string | `tenant` | 混合模块的目录名（一模块多 service）|
+| `MixedService` | string | `Tenant` | 混合模块的聚合根服务名，成员服务自动叫 `XxxMember` |
+| `GatewayPrefix` | string | `gateway-<prefix>` | 网关配置文件前缀 |
+| `HTTPPort` | int | `18080` | 文档网关端口 |
+| `DefaultLocale` | select | `zh` | 校验错误默认语言（go-argus 内置九种）|
+| `PipelineRepo` | string | `kamalyes/deploy-pipeline` | 复用型工作流仓库 |
 
-# 3. 设置 Protobuf Include 路径
-scripts\setup-protobuf-includes.bat   # Windows
-# bash scripts/setup-protobuf-includes.sh  # Linux/Mac
+内置变量 `Year` 由 kopy 注入，用于版权行。
 
-# 4. 生成 Proto 代码
-scripts\generate-modular.bat      # Windows
-# bash scripts/generate-modular.sh    # Linux/Mac
+## 🏗️ 模板结构 | Template layout
 
-# 5. 注入结构体标签（如 db/json 标签）
-scripts\inject-tags.bat           # Windows
-# bash scripts/inject-tags.sh         # Linux/Mac
-
-# 6. 启动 Gateway 服务
-scripts\run.bat                   # Windows
-# bash scripts/run.sh                 # Linux/Mac
+```text
+kronos-share-proto-template/
+├── kopy.yaml                       # 模板定义：变量、忽略、重命名 | template definition
+├── README.md                       # 模板自述（不进入生成项目）| template docs, never copied
+├── readme.tpl                      # → 生成项目的 README.md（中文）
+├── readme-en.tpl                   # → 生成项目的 README.en.md（英文）
+├── api-generate.tpl                # → 生成项目的 API_GENERATE.md
+├── proto/
+│   ├── CONVENTIONS.md              # 目录规范 | directory conventions
+│   ├── common/                     # 公共消息（含两个示例模块的实体）
+│   ├── enums/                      # 枚举（status + 两个示例模块）
+│   ├── __module__/                 # 示例模块一：完整 CRUD + 批量
+│   ├── __module2__/                # 示例模块二：完整 CRUD + 跨模块复用
+│   ├── __module3__/                # 混合模块：两个 service + 动作型 + 子资源
+├── validation/                     # go-argus 校验层 + 拦截器 + 契约测试
+├── scripts/                        # 16 个生成/环境脚本（.sh + .bat）
+├── resources/__gateway_prefix__-dev.yaml  # 网关与 swagger 聚合配置
+├── bootstrap/                      # 文档网关启动器
+├── swagger_embed.go / _stub.go     # swagger 嵌入（build tag 分流）
+├── go.mod                          # 依赖：grpc / protobuf / gateway / argus / go-config
+├── .github/
+│   ├── workflows/generate-pb.yml   # pb 自动生成 + PR 同步验证
+│   ├── workflows/pipeline.yml      # CI/CD 流水线
+│   ├── workflows/pr-*-notify.yml   # PR 通知
+│   ├── workflows/GUIDE.md          # 流水线详解
+│   ├── PIPELINE_CONFIG.md          # 需要配置的 vars / secrets
+│   ├── copilot-instructions.md     # commit message 规范
+│   └── skills/                     # 3 份 AI 协作规范
+├── .trae/                          # proto 规范 + commit 规范
+└── .vscode/                        # 编辑器配置 + proto 风格指南 SKILL
 ```
 
-## 📋 模板变量
+## 🧠 模板渲染机制 | How rendering works
 
-| 变量 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `OrgName` | string | `kamalyes` | 组织名称，用于 Go 模块路径 `github.com/{org}/{project}` |
-| `OrgPrefix` | string | `kronos` | 组织前缀，用于项目名 `{prefix}-share-proto` |
-| `ProjectName` | string | `[[ .OrgPrefix ]]-share-proto` | 项目名称 |
-| `ModuleName` | string | `github.com/[[ .OrgName ]]/[[ .OrgPrefix ]]-share-proto` | Go 模块路径 |
-| `GoVersion` | select | `1.25` | Go 版本（1.22/1.23/1.24/1.25） |
-| `AuthorName` | string | `kamalyes` | 作者名称 |
-| `AuthorEmail` | string | `example@qq.com` | 作者邮箱 |
-| `GatewayPrefix` | string | `gateway-[[ .OrgPrefix ]]` | 网关配置前缀 |
-| `HTTPPort` | int | `8080` | HTTP 端口 |
-| `JavaPackage` | string | `com.[[ .OrgPrefix ]].api` | Java 包名 |
-| `ProtoPackage` | string | `[[ .OrgPrefix ]].api` | Proto 包名前缀 |
-| `ExampleServiceName` | string | `Health` | 示例服务名称（PascalCase） |
+### ⚠️ 定界符是 `<% %>`，不是 kopy 默认的 `[[ ]]`
 
-## 🔄 文件重命名规则
+bash 的条件测试语法本身就是双方括号（`if [[ -z "$x" ]]`），与 kopy 默认定界符冲突，
+整个 `scripts/` 目录会渲染失败换成 `<% %>` 后，生产项目里的 shell 脚本可以逐字节
+同步进来，不需要为了模板引擎把 `[[ ]]` 改写成 `[ ]`（改写会悄悄改变语义，比如 `=~` 和 `&&`）。
 
-| 模式 | 替换为 | 说明 |
-|------|--------|------|
-| `__project_name__` | `[[ .ProjectName ]]` | 项目名称 |
-| `__org_prefix__` | `[[ .OrgPrefix ]]` | 组织前缀 |
-| `__example_service__` | `[[ .ExampleServiceName \| snake ]]` | 示例服务名称（蛇形） |
-| `__gateway_prefix__` | `[[ .GatewayPrefix ]]` | 网关配置前缀 |
+[EN] bash's own test syntax uses double brackets, which collides with kopy's default
+delimiters and breaks the whole scripts/ directory. With `<% %>`, shell scripts from a real
+project sync byte for byte instead of being rewritten into single-bracket form, which would
+silently change semantics.
 
-## 🔤 命名转换函数
+### 其它要知道的 | Other things to know
 
-模板中的 `default` 字段和文件内容支持以下命名转换函数：
+| 机制 \| Mechanism | 行为 \| Behaviour | 影响 \| Consequence |
+| --- | --- | --- |
+| 渲染范围 | 文件**内容和路径**都会渲染 | 任何字面量 `<%` 都会被当成模板语法 |
+| 变量类型 | 全部是字符串，`bool` 得到 `"true"` / `"false"` | 条件必须写 `eq .X "true"` |
+| 执行顺序 | **先 rename 再 ignore** | 要忽略某文件，得忽略它 rename **之后**的路径 |
+| ignore 匹配 | 精确 / 前缀 `dir/` / 后缀 `*.ext` / 路径段 | 不带斜杠的模式会连子目录同名文件一起忽略 |
+| hooks | 当前版本**不执行** | 初始化步骤只能写进文档让人手动跑 |
+| 内置变量 | 只有 `Year` | 其余都要显式定义成 question |
 
-| 函数 | 说明 | 示例 |
-|------|------|------|
-| `snake` | 蛇形命名 | `HealthService` → `health_service` |
-| `camel` | 驼峰命名 | `health_service` → `healthService` |
-| `pascal` | 帕斯卡命名 | `health_service` → `HealthService` |
-| `kebab` | 短横线命名 | `HealthService` → `health-service` |
-| `lower` | 转小写 | `Hello` → `hello` |
-| `upper` | 转大写 | `hello` → `HELLO` |
+### 三份文档模板的落位 | Three doc templates
 
-## 📝 如何添加或修改服务
+模板自己的 README 和生成项目的 README 都叫 `README.md`，而 ignore 作用在 rename
+**之后**的路径，两者在匹配时是同一个字符串解决办法是有序的 rename 加一条带斜杠的
+ignore（带斜杠只做前缀匹配，所以只命中根目录那一份）：
 
-1. 在 `proto/` 目录下创建或修改对应模块的 `.proto` 文件
-2. 如果你创建了一个全新的模块，请在 `scripts/generate-modular.bat` (或 `.sh`) 文件中的 `PROTO_MODULES` 变量中添加你的模块名
-3. 基础模块（无 gRPC 服务定义）添加到 `PROTO_BASE_MODULES`，服务模块添加到 `PROTO_MODULES`
-4. 运行代码生成脚本来更新代码
-5. 如需嵌入 Swagger 文档，在 `swagger_embed.go` 中添加对应的 `go:embed` 指令和映射
-6. 如需网关聚合，在 `resources/gateway-dev.yaml` 的 `aggregate.services` 中注册新服务
-7. 运行 `go mod tidy` 更新依赖
+[EN] The template's own README and the generated one are both `README.md`, and ignore
+rules see post-rename paths, so the two are indistinguishable. Ordered renames plus a
+trailing-slash ignore (prefix match, hitting only the root one) solve it:
 
-## ⚠️ 重要注意事项
-
-### 命名冲突问题
-
-在定义 `.proto` 文件时，需要特别注意**枚举类型**与 **RPC 方法/消息类型**之间的命名冲突：
-
-```protobuf
-// ❌ 不推荐：枚举与 RPC 方法同名
-enum PasswordResetStage { ... }
-rpc PasswordResetStage(...) returns (...);
-
-// ✅ 推荐：使用不同的名称
-enum PasswordResetStatus { ... }
-rpc CheckPasswordResetStage(...) returns (...);
+```yaml
+rename:
+  - pattern: "README.md"         # 1. 模板自述 → 忽略标记
+    value: "__kopy_template_doc__"
+  - pattern: "readme-en.tpl"     # 2. 英文说明 → README.en.md
+    value: "README.en.md"
+  - pattern: "readme.tpl"        # 3. 中文说明 → README.md
+    value: "README.md"
+  - pattern: "api-generate.tpl"  # 4. 生成说明 → API_GENERATE.md
+    value: "API_GENERATE.md"
+ignore:
+  - "__kopy_template_doc__/"     # 带斜杠：只忽略根目录那一份
 ```
 
-**命名规范建议**：
+顺序颠倒会导致生成项目没有 README，或者模板说明被当成项目 README
+`proto/CONVENTIONS.md`、`.github/workflows/GUIDE.md` 这些子目录文档刻意不叫 README.md，
+就是为了避开第 1 条规则的子串匹配。
 
-- 枚举类型：使用 `XXXStatus`、`XXXType`、`XXXState` 等后缀
-- RPC 方法：使用动词开头，如 `Get`、`List`、`Create`、`Update`、`Delete`、`Check` 等
-- 消息类型：使用 `XXXRequest`、`XXXResponse` 后缀
+[EN] Swapping the order drops the README or ships the template docs as one. Sub-directory
+docs are deliberately not named README.md to dodge rule 1's substring match.
 
-### 中英文双语注释规范
+## 🔄 从生产项目同步脚本 | Syncing scripts from a real project
 
-所有 `.proto` 文件必须使用中英文双语注释：
+`scripts/` 下的 16 个脚本与 `.github/`、`.vscode/`、`.trae/` 的规范文件都是从生产仓库
+同步来的，项目专属的部分只有这么几处，升级时照着替换即可：
 
-```protobuf
-// 中文注释
-// [EN] English comment
-enum CommonStatus {
-  COMMON_STATUS_UNSPECIFIED = 0;  // 未指定 | [EN] Unspecified
-  COMMON_STATUS_NORMAL = 1;       // 正常 | [EN] Normal
-}
-```
+[EN] The 16 scripts and the convention files are synced from a production repository. Only
+these spots are project-specific, so an upgrade is a copy plus a few substitutions:
 
-- 文件级注释：中文在上，英文在下，使用 `[EN]` 前缀标记
-- 行内注释：中文与英文在同一行，使用 `|` 分隔，英文以 `[EN]` 开头
-- 分隔线：`//===========================  中文标题 | English Title  ==========================//`
+| 文件 \| File | 要模板化的内容 \| What to template |
+| --- | --- |
+| `scripts/generate-modular.sh` / `.bat` | `GO_MODULE` 与 `PROTO_SERVICE_MODULES` |
+| `scripts/build-linux.sh` | `BINARY_NAME` 与文件头 banner |
+| `.github/workflows/*.yml` | 分支名、复用工作流仓库、secret 名 |
+| `.vscode/settings.json` | 版权行里的作者名 |
+| 全部文件 | 组织名、项目名、Go 模块路径、proto/Java 包名 |
 
-## 导出前端 APIs
+## 🛠️ 二次定制 | Customizing
 
-```bash
-openapi-generator-cli generate -i ./[[ .OrgPrefix ]]-openapi-service.swagger.json -g typescript-axios -o ./generate --additional-properties modelPropertyNaming=original,stringEnums=true,withSeparateModelsAndApi=true,modelPackage=models,apiPackage=apis,supportsES6=true,enumPropertyNaming=UPPERCASE
-```
+| 想改什么 \| Goal | 改哪里 \| Where |
+| --- | --- |
+| 加一个交互变量 | `kopy.yaml` 的 `questions`，再在文件里用 `<% .NewVar %>` |
+| 加/删示例模块 | 单 service 复制 `proto/__module__/`，多 service 复制 `proto/__module3__/`，并同步 `scripts/generate-modular.*`、`swagger_embed.go`、`resources/*.yaml` |
+| 换 protoc 版本 | `scripts/common.sh|bat` 的 `REQUIRED_PROTOC_VERSION` 与 setup 脚本 |
+| 换校验库 | `validation/` 整个替换（proto 侧的 `@inject_tag` 语法不用动）|
+| 不要文档网关 | 删 `bootstrap/`、`resources/`、`swagger_embed*.go` 与对应依赖 |
+| 不要 CI | 删 `.github/workflows/` |
+| 不要 AI 规范文件 | 删 `.trae/`、`.github/skills/`、`.vscode/skills/` |
+
+## ✅ 已验证 | Verified
+
+模板的每条链路都在本机实跑验证过（变量取 `catalog/Product` + `inventory/Warehouse`）：
+
+[EN] Every path was executed locally with the default example variables:
+
+| 环节 \| Step | 结果 \| Result |
+| --- | --- |
+| `kopy new` | 66 文件渲染，`__module__` / `__module3__` 等占位符全部落位，无残留定界符 |
+| `scripts/setup-all.sh` | protoc 24.3 + 5 个插件 + googleapis 安装成功 |
+| `scripts/generate-modular.sh` | 24 个 pb.go + 4 个 gateway 代理 + 4 份 swagger 全部生成 |
+| `inject-tags` | `validate:"required,tenant_id"` 等 13 条规则注入进 struct tag |
+| `go mod tidy && go build ./...` | 通过 |
+| `go vet ./...` | 通过 |
+| `go test ./...` | 19 个用例通过（含 6 个契约测试：必填、嵌套、自定义规则、批量上限、同模块两个 service）|
+| `go build -tags swagger ./...` | 通过（swagger 嵌入真实生成的 yaml）|
+| `go run ./bootstrap` | 文档网关启动成功，`GET /swagger` 返回 200 |
+
+## 许可证 | License
+
+Copyright (c) 2026 by kamalyes, All Rights Reserved.
