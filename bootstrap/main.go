@@ -1,41 +1,32 @@
 /*
- * @Author: [[ .AuthorName ]] [[ .AuthorEmail ]]
- * @Date: [[ nowFmt "2006-01-02" ]] 00:00:00
- * @LastEditors: [[ .AuthorName ]] [[ .AuthorEmail ]]
- * @LastEditTime: [[ nowFmt "2006-01-02" ]] 00:00:00
- * @FilePath: \[[ .ProjectName ]]\bootstrap\main.go
- * @Description: [[ .ProjectName ]] 网关启动器
+ * @Author: <% .AuthorName %> <% .AuthorEmail %>
+ * @Date: <% nowFmt "2006-01-02 15:04:05" %>
+ * @LastEditors: <% .AuthorName %> <% .AuthorEmail %>
+ * @LastEditTime: <% nowFmt "2006-01-02 15:04:05" %>
+ * @FilePath: \<% .ProjectName %>\bootstrap\main.go
+ * @Description: 网关启动器 | Gateway launcher
  *
- * Copyright (c) [[ .Year ]] by [[ .AuthorName ]], All Rights Reserved.
+ * Copyright (c) <% .Year %> by <% .AuthorName %>, All Rights Reserved.
  */
+
 package main
 
-import (
-	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-)
+// 这个入口只负责把 proto 产出的 swagger 聚合成一个可浏览的文档站，
+// 它不是业务服务：业务 gRPC 服务在各自仓库里实现，本仓库只提供协议与 pb 代码。
+// 只需要协议产物、不需要文档站的项目，可以直接删掉整个 bootstrap 目录。
+//
+// [EN] This entry point only aggregates the generated swagger files into a
+// browsable docs site. It is not a business service: business gRPC services live
+// in their own repositories, this one ships contracts and pb code. Projects that
+// only need the artifacts can delete the whole bootstrap directory.
 
 func main() {
+	// 多环境配置：注册额外环境前缀后，可按 resources/<prefix>-<env>.yaml 加载。
+	// [EN] Multi-env: register extra prefixes to load resources/<prefix>-<env>.yaml
+	// goconfig.RegisterEnvPrefixes("prod", "prod")
+
 	gateway := NewGateway()
-
 	if err := gateway.Start(); err != nil {
-		fmt.Printf("启动网关失败: %v\n", err)
-		os.Exit(1)
+		panic(err)
 	}
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-
-	fmt.Println("🚀 [[ .ProjectName ]] Gateway 已启动，按 Ctrl+C 优雅关闭...")
-	<-c
-
-	fmt.Println("🛑 正在关闭网关...")
-	if err := gateway.Stop(); err != nil {
-		fmt.Printf("关闭网关失败: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("✅ 网关已安全关闭")
 }

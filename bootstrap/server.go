@@ -1,73 +1,47 @@
 /*
- * @Author: [[ .AuthorName ]] [[ .AuthorEmail ]]
- * @Date: [[ nowFmt "2006-01-02" ]] 00:00:00
- * @LastEditors: [[ .AuthorName ]] [[ .AuthorEmail ]]
- * @LastEditTime: [[ nowFmt "2006-01-02" ]] 00:00:00
- * @FilePath: \[[ .ProjectName ]]\bootstrap\server.go
- * @Description: [[ .ProjectName ]] 网关实现
+ * @Author: <% .AuthorName %> <% .AuthorEmail %>
+ * @Date: <% nowFmt "2006-01-02 15:04:05" %>
+ * @LastEditors: <% .AuthorName %> <% .AuthorEmail %>
+ * @LastEditTime: <% nowFmt "2006-01-02 15:04:05" %>
+ * @FilePath: \<% .ProjectName %>\bootstrap\server.go
+ * @Description: 网关实现 | Gateway implementation
  *
- * Copyright (c) [[ .Year ]] by [[ .AuthorName ]], All Rights Reserved.
+ * Copyright (c) <% .Year %> by <% .AuthorName %>, All Rights Reserved.
  */
+
 package main
 
 import (
 	"fmt"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	goconfig "github.com/kamalyes/go-config"
 	gateway "github.com/kamalyes/go-rpc-gateway"
-	"google.golang.org/grpc"
 )
 
+// Gateway 文档网关 | Documentation gateway
 type Gateway struct {
-	gateway     *gateway.Gateway
-	grpcClients map[string]*grpc.ClientConn
-	mux         *runtime.ServeMux
+	gateway *gateway.Gateway
 }
 
+// NewGateway 创建新的网关 | Create a new gateway
 func NewGateway() *Gateway {
-	return &Gateway{
-		grpcClients: make(map[string]*grpc.ClientConn),
-	}
+	return &Gateway{}
 }
 
+// Start 启动网关 | Start the gateway
+// 配置从 resources/ 下按 <prefix>-<env>.yaml 加载，prefix 由 WithPrefix 指定。
+// [EN] Config is loaded from resources/<prefix>-<env>.yaml, prefix set by WithPrefix
 func (g *Gateway) Start() error {
 	gw, err := gateway.NewGateway().
 		WithSearchPath("resources").
 		WithEnvironment(goconfig.GetEnvironment()).
-		WithPrefix("gateway").
+		WithPrefix("<% .GatewayPrefix %>").
 		WithHotReload(nil).
 		Build()
 	if err != nil {
-		return fmt.Errorf("创建网关失败: %v", err)
+		return fmt.Errorf("创建网关失败 | failed to create gateway: %w", err)
 	}
 	g.gateway = gw
 
-	g.registerCustomRoutes()
-
-	return g.gateway.Start()
-}
-
-func (g *Gateway) registerCustomRoutes() {
-	g.gateway.RegisterHTTPRoute("/api/generate", GenerateHandler)
-}
-
-func (g *Gateway) Stop() error {
-	for serviceName, conn := range g.grpcClients {
-		if err := conn.Close(); err != nil {
-			fmt.Printf("关闭gRPC连接 %s 失败: %v\n", serviceName, err)
-		}
-	}
-
-	if g.gateway != nil {
-		return g.gateway.Stop()
-	}
-
-	return nil
-}
-
-func (g *Gateway) WaitForShutdown() {
-	if g.gateway != nil {
-		g.gateway.WaitForShutdown()
-	}
+	return g.gateway.Run()
 }
