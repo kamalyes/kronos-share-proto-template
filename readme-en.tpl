@@ -36,6 +36,8 @@
 - **🤖 Automatic pb generation**: once proto changes land on `<% .BaseBranch %>`, CI regenerates and commits pb; on a PR it first verifies the two are in sync
 - **🈶 Bilingual comment conventions**: every message, field and RPC reads "中文 | [EN] English", so mixed-language teams can both work
 - **🔌 Ready-made validation interceptor**: wire `validation.UnaryServerInterceptor` once and every new RPC is covered automatically
+- **🏷️ Versioned releases**: `release.yml` tags and publishes in one click, verifying the artifacts, attaching the aggregated OpenAPI document and flagging possibly breaking changes
+- **🛰️ Downstream fan-out**: after a release it notifies Go services to upgrade their dependency and the TypeScript SDK repository to regenerate and publish to npm
 
 ### Why generated code is committed
 
@@ -77,8 +79,13 @@ clone and build without installing protoc.
 │   ├── <% .MixedModule %>/             # mixed module: two services + actions + sub-resources
 │   │   ├── <% .MixedService | snake %>_service.proto         # aggregate root
 │   │   └── <% .MixedService | snake %>_member_service.proto  # members (second service)
+│   ├── openapi/                        # Bundle metadata (generates no Go code)
+│   │   └── bundle.proto                # Title / security scheme / tag descriptions
 │   └── CONVENTIONS.md                  # directory conventions
 ├── pb/                                 # generated Go code (committed, never edited)
+├── docs/                               # Published artifacts and downstream templates
+│   ├── openapi.swagger.yaml            # Aggregated OpenAPI document (committed, release asset)
+│   └── downstream-proto-sync.yml        # Sync workflow for downstream Go services (copy it)
 ├── validation/                         # go-argus validation layer
 │   ├── validator.go                    # validator, i18n, custom rules, enum validation
 │   ├── interceptor.go                  # gRPC interceptor + IP allowlist
@@ -88,7 +95,7 @@ clone and build without installing protoc.
 ├── resources/                          # gateway configuration per environment
 ├── bootstrap/                          # docs gateway launcher (deletable)
 ├── swagger_embed.go                    # swagger embedding (only built with -tags swagger)
-└── .github/workflows/                  # pb auto-generation + CI/CD + PR notifications
+└── .github/workflows/                  # pb generation + releases + CI/CD + PR notifications
 ```
 
 ## 📦 Quick start
@@ -235,8 +242,17 @@ The locale is negotiated from the request's `accept-language`, defaulting to
 ## 🔌 Using it downstream
 
 ```bash
-go get <% .ModuleName %>@latest
+# Recommended: pin a released version
+go get <% .ModuleName %>@v1.0.0
+
+# While iterating: track the trunk
+go get <% .ModuleName %>@<% .BaseBranch %>
 ```
+
+Why a version rather than a commit hash: a hash says nothing about compatibility while
+`v1.3.0 -> v2.0.0` does; Go's minimal version selection only understands tags, and once several
+services share one contract, pseudo-versions produce "the same proto resolved to two versions"
+conflicts.
 
 ```go
 import (
@@ -252,14 +268,73 @@ resp, err := client.<% .ExampleService | pascal %>List(ctx, &<% .ExampleModule %
 })
 ```
 
-After changing proto: wait for CI to regenerate and commit pb on `<% .BaseBranch %>`, then
-`go get` the new hash downstream. Referencing it before CI finishes pulls the old pb.
+After changing proto: wait for CI to regenerate and commit pb on `<% .BaseBranch %>`, then cut a
+release (or `go get` the new commit while iterating). Referencing it before CI finishes pulls the
+old pb.
+
+## 📦 Releases and downstream fan-out
+
+The point of a contract hub is "change it once, everything follows". `release.yml` wires that
+path end to end, with nobody running `go get` by hand in each repository:
+
+```text
+  Run "Release Contract" in Actions (choose patch / minor / major)
+            |
+            |- Regenerate everything and verify: go build, go test, and a byte comparison
+            |   against the committed pb (a difference blocks the release, so you can never
+            |   publish from a state where the proto changed but pb was not regenerated)
+            |
+            |- Tag, create a GitHub Release and attach two assets:
+            |     openapi.swagger.yaml          every service in one document
+            |     openapi-specs-vX.Y.Z.tar.gz   the per-module documents
+            |
+            |- Release notes are composed automatically: the go get line, which proto files
+            |   changed, and a screen for removed rpcs / messages / touched field numbers
+            |
+            `- Notify downstream (repository_dispatch)
+                  |- Go services -> go get, tidy and go build, then push when it compiles
+                  `- TS SDK      -> pull the bundle, regenerate, verify, changeset, publish
+```
+
+| Entry point | How | Result |
+| --- | --- | --- |
+| Manual release | Release Contract, choose `patch`/`minor`/`major` | Computes the next version, verifies, tags, publishes, notifies |
+| Explicit version | Release Contract with `version=v2.0.0` | Publishes that version (`v2.0.0-rc.1` works too) |
+| Verify only | Release Contract with `dry-run` | Runs the checks and prints what would be published |
+| Local tag | `git tag v1.2.0 && git push origin v1.2.0` | Goes through the same verification and publishing |
+
+### Configuring the fan-out
+
+| Setting | Where | Purpose |
+| --- | --- | --- |
+| `DOWNSTREAM_REPOS` | Repository variable (or the `DownstreamRepos` template variable) | Go service repositories to notify, comma separated |
+| `SDK_REPO` | Repository variable (or the `SdkRepo` template variable) | TypeScript SDK repository to notify |
+| `OPS_CLI_APP_ID` / `OPS_CLI_APP_PRIVATE_KEY` | Repository secrets | GitHub App credentials for cross-repository dispatch |
+
+`GITHUB_TOKEN` cannot trigger workflows in another repository, so the fan-out needs a GitHub App.
+Without one the release still completes and only the notification step is skipped.
+
+The downstream Go side already has its workflow written: copy
+[docs/downstream-proto-sync.yml](./docs/downstream-proto-sync.yml) into the service repository as
+`.github/workflows/proto-sync.yml`. The TypeScript side is generated from
+[openapi-ts-sdk-template](https://github.com/<% .OrgName %>/openapi-ts-sdk-template), which ships
+`sync-contract.yml`; point its `ProtoRepo` at this repository and the chain is complete.
+
+### What the aggregated document is
+
+`docs/openapi.swagger.yaml` is every business module merged into a single OpenAPI 2.0 document.
+It is not the same thing as the docs gateway: the gateway needs a running service, while this is a
+committed static file, so downstream gets the full contract without starting anything. Its title,
+security scheme and tag descriptions live in
+[proto/openapi/bundle.proto](./proto/openapi/bundle.proto) — register a new module's `tags` there,
+or its group shows up in the bundle with a name and no description.
 
 ## 👷 CI/CD
 
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
 | `generate-pb.yml` | `proto/**` changes (push / PR / manual) | Regenerate and commit pb; on a PR it only verifies and comments the diff |
+| `release.yml` | Manual / pushing a `v*` tag | Verifies artifacts, tags, publishes the Release and bundle assets, notifies downstream |
 | `pipeline.yml` | push to `dev` / tags / manual | Build, image, deploy, code quality |
 | `pr-opened-notify.yml` | PR opened | Change summary comment and notification |
 | `pr-merged-notify.yml` | PR merged | Merge notification |

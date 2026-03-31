@@ -58,7 +58,7 @@ go install github.com/kamalyes/kopy@latest     # 模板渲染 | render the templ
 ### 生成项目 | Generate
 
 ```bash
-# 交互式：逐项确认 18 个变量 | interactive
+# 交互式：逐项确认 22 个变量 | interactive
 kopy new https://github.com/kamalyes/kronos-share-proto-template -o ./my-share-proto
 
 # 非交互：用 --var 跳过全部提问 | non-interactive
@@ -77,10 +77,14 @@ kopy new https://github.com/kamalyes/kronos-share-proto-template -o ./demo-share
   --var ExampleService=Product \
   --var SecondModule=inventory \
   --var SecondService=Warehouse \
+  --var MixedModule=tenant \
+  --var MixedService=Tenant \
   --var GatewayPrefix=gateway-demo \
   --var HTTPPort=18080 \
   --var DefaultLocale=zh \
-  --var PipelineRepo=kamalyes/deploy-pipeline
+  --var PipelineRepo=kamalyes/deploy-pipeline \
+  --var DownstreamRepos=demo-user-service,demo-order-service \
+  --var SdkRepo=kamalyes/demo-api-sdk
 
 # 预览不写盘 | preview without writing
 kopy new ./kronos-share-proto-template -o /tmp/preview --dry-run
@@ -145,6 +149,8 @@ go run ./bootstrap                        # 文档站 http://127.0.0.1:18080/swa
 | `HTTPPort` | int | `18080` | 文档网关端口 |
 | `DefaultLocale` | select | `zh` | 校验错误默认语言（go-argus 内置九种）|
 | `PipelineRepo` | string | `kamalyes/deploy-pipeline` | 复用型工作流仓库 |
+| `DownstreamRepos` | string | 空 | 发版后要通知的下游 Go 服务仓库，逗号分隔；可被仓库变量 `DOWNSTREAM_REPOS` 覆盖 |
+| `SdkRepo` | string | 空 | 发版后要通知的 TypeScript SDK 仓库；可被仓库变量 `SDK_REPO` 覆盖 |
 
 内置变量 `Year` 由 kopy 注入，用于版权行。
 
@@ -164,6 +170,8 @@ kronos-share-proto-template/
 │   ├── __module__/                 # 示例模块一：完整 CRUD + 批量
 │   ├── __module2__/                # 示例模块二：完整 CRUD + 跨模块复用
 │   ├── __module3__/                # 混合模块：两个 service + 动作型 + 子资源
+│   └── openapi/bundle.proto        # 聚合文档的元信息：标题 / 鉴权 / 分组说明
+├── docs/downstream-proto-sync.yml  # 下游 Go 服务的协议同步工作流（给生成项目复制去用）
 ├── validation/                     # go-argus 校验层 + 拦截器 + 契约测试
 ├── scripts/                        # 16 个生成/环境脚本（.sh + .bat）
 ├── resources/__gateway_prefix__-dev.yaml  # 网关与 swagger 聚合配置
@@ -171,7 +179,7 @@ kronos-share-proto-template/
 ├── swagger_embed.go / _stub.go     # swagger 嵌入（build tag 分流）
 ├── go.mod                          # 依赖：grpc / protobuf / gateway / argus / go-config
 ├── .github/
-│   ├── workflows/*.yml.tpl         # 工作流模板：pb 自动生成、CI/CD、PR 通知
+│   ├── workflows/*.yml.tpl         # 工作流模板：pb 自动生成、协议发版、CI/CD、PR 通知
 │   │                               # 带 .tpl 是为了不让 GitHub 解析模板仓库自己的工作流
 │   ├── workflows/GUIDE.md          # 流水线详解
 │   ├── PIPELINE_CONFIG.md          # 需要配置的 vars / secrets
@@ -252,6 +260,56 @@ these spots are project-specific, so an upgrade is a copy plus a few substitutio
 | `.vscode/settings.json` | 版权行里的作者名 |
 | 全部文件 | 组织名、项目名、Go 模块路径、proto/Java 包名 |
 
+## 🔗 三个仓库怎么串起来 | How the three repositories connect
+
+这个模板生成的是链路的**源头**：proto 改一次，Go 服务和 TypeScript SDK 自动跟上。
+
+[EN] This template generates the **head** of a chain: change a proto once and both the Go services
+and the TypeScript SDK follow automatically.
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 本模板 → 协议中心仓库                                                          │
+│   proto 是唯一真相源，产出：                                                   │
+│     pb/**                      Go 结构体与 gRPC stub（入库）                   │
+│     proto/**/*.swagger.yaml    按模块拆分的 OpenAPI 文档（入库）                │
+│     docs/openapi.swagger.yaml  全部模块合并的聚合文档（入库）                   │
+│   release.yml 发版：校验 → 打 tag → Release 附带聚合文档 → 通知下游             │
+└────────────────┬────────────────────────────────────┬────────────────────────┘
+                 │ go get <module>@vX.Y.Z             │ repository_dispatch
+                 ▼                                    ▼
+┌────────────────────────────────┐   ┌──────────────────────────────────────────┐
+│ Go 业务服务仓库                  │   │ openapi-ts-sdk-template → SDK 仓库        │
+│  用 pb 里的 stub 实现 gRPC      │   │  sync-contract.yml 收到通知后：            │
+│  proto-sync.yml 自动升级依赖     │   │   拉聚合文档 → pnpm generate → 验证        │
+│  （模板见 docs/ 目录）           │   │   → 写 changeset → 发 npm                 │
+└────────────────────────────────┘   └──────────────────────────────────────────┘
+```
+
+| 角色 \| Role | 仓库 \| Repository | 它负责什么 \| Responsibility |
+| --- | --- | --- |
+| 协议中心 | 本模板生成 | proto 真相源、pb 代码、聚合 OpenAPI 文档、版本与发版 |
+| Go 业务服务 | 各自的仓库 | 实现 gRPC 服务；`docs/downstream-proto-sync.yml` 负责自动升级协议依赖 |
+| TypeScript SDK | [openapi-ts-sdk-template](https://github.com/kamalyes/openapi-ts-sdk-template) 生成 | 把聚合文档变成类型完整的 npm 包 |
+| 生成器 | [openapi-generator-ts-cli](https://github.com/kamalyes/openapi-generator-ts-cli) | 被 SDK 仓库调用，把 OpenAPI 文档变成 TypeScript 源码 |
+| 流水线公共件 | [deploy-pipeline](https://github.com/kamalyes/deploy-pipeline) | 复用型工作流与 composite action（通知、代码质量、协议依赖升级）|
+
+### 接线清单 | Wiring checklist
+
+| 步骤 \| Step | 在哪做 \| Where |
+| --- | --- |
+| 1. 生成协议中心 | `kopy new .../kronos-share-proto-template`，填 `SdkRepo` 与 `DownstreamRepos` |
+| 2. 生成 SDK 仓库 | `kopy new .../openapi-ts-sdk-template`，填 `ProtoRepo` 为协议中心仓库 |
+| 3. 下游 Go 服务 | 复制生成项目里的 `docs/downstream-proto-sync.yml` 到服务仓库的 `.github/workflows/` |
+| 4. 配 GitHub App | 各仓库配 `OPS_CLI_APP_ID` / `OPS_CLI_APP_PRIVATE_KEY`（跨仓库通知必需）|
+| 5. 验证 | 协议中心跑一次 Release Contract，看下游是否自动起了对应工作流 |
+
+> 💡 `DOWNSTREAM_REPOS` / `SDK_REPO` 也可以在仓库 Variables 里配，优先级高于模板变量，
+> 这样后续新增一个服务不需要重新渲染模板。
+>
+> [EN] `DOWNSTREAM_REPOS` / `SDK_REPO` can also be set as repository variables, which take
+> precedence over the template values, so adding a service later needs no re-render.
+
 ## 🛠️ 二次定制 | Customizing
 
 | 想改什么 \| Goal | 改哪里 \| Where |
@@ -272,7 +330,7 @@ these spots are project-specific, so an upgrade is a copy plus a few substitutio
 
 | 环节 \| Step | 结果 \| Result |
 | --- | --- |
-| `kopy new` | 66 文件渲染，`__module__` / `__module3__` 等占位符全部落位，无残留定界符 |
+| `kopy new` | 69 文件渲染，`__module__` / `__module3__` 等占位符全部落位，无残留定界符 |
 | `scripts/setup-all.sh` | protoc 24.3 + 5 个插件 + googleapis 安装成功 |
 | `scripts/generate-modular.sh` | 24 个 pb.go + 4 个 gateway 代理 + 4 份 swagger 全部生成 |
 | `inject-tags` | `validate:"required,tenant_id"` 等 13 条规则注入进 struct tag |
@@ -281,6 +339,12 @@ these spots are project-specific, so an upgrade is a copy plus a few substitutio
 | `go test ./...` | 19 个用例通过（含 6 个契约测试：必填、嵌套、自定义规则、批量上限、同模块两个 service）|
 | `go build -tags swagger ./...` | 通过（swagger 嵌入真实生成的 yaml）|
 | `go run ./bootstrap` | 文档网关启动成功，`GET /swagger` 返回 200 |
+| 聚合 OpenAPI 文档 | 16 条路径 + 56 个 definition 合并成一份 `docs/openapi.swagger.yaml`，4 个分组描述齐全，`@inject_tag` 零残留 |
+| 生成幂等性 | 连续两次 `generate-modular.sh` 后 `git diff` 为空（发版流水线的同步校验依赖这一点）|
+| `release.yml` 版本推算 | patch/minor/major/显式版本/prerelease/首次发布六种情况实跑，非法版本号被拦住 |
+| `release.yml` 发布说明 | 实跑生成：引用方式、变更的 proto、删掉的 rpc 与改动的字段号都被正确识别 |
+| `release.yml` 资产 | 实跑产出 `openapi.swagger.yaml`（info.version 已对齐 tag）与按模块拆分的 tar |
+| 全链路到 TS SDK | 用生成出来的聚合文档喂 `openapi-ts-sdk-template`：27 文件生成，typecheck 通过，16 个用例通过，tsup 构建出 ESM/CJS/d.ts |
 
 ## 许可证 | License
 

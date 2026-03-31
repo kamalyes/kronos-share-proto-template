@@ -10,7 +10,7 @@ bash scripts/generate-modular.sh          # Linux / macOS
 scripts\generate-modular.bat              # Windows
 ```
 
-## 五个阶段 | Five stages
+## 六个阶段 | Six stages
 
 ```text
 ┌─ 1. 环境确认 | Toolchain check ───────────────────────────────────────────┐
@@ -37,6 +37,12 @@ scripts\generate-modular.bat              # Windows
 │ inject-tags.sh 把 proto 注释里的 @inject_tag 写进 pb/*.pb.go 的 struct tag │
 │ 同时清理 swagger 里的 @inject_tag 污染并把约束注入 swagger                 │
 └──────────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─ 6. 聚合文档 | Aggregated document ──────────────────────────────────────┐
+│ allow_merge 把全部业务 proto 合成一份 docs/openapi.swagger.yaml           │
+│ 元信息（标题、鉴权声明、分组说明）来自 proto/openapi/bundle.proto          │
+│ 这份文件是下游多语言 SDK 与 API 门户的输入，发版时作为 release 资产上传     │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 产物清单 | Output
@@ -46,7 +52,8 @@ scripts\generate-modular.bat              # Windows
 | `pb/<module>/*.pb.go` | 消息结构体、枚举 | ✅ |
 | `pb/<module>/*_grpc.pb.go` | gRPC 客户端与服务端接口 | ✅ |
 | `pb/<module>/*.pb.gw.go` | gRPC-Gateway HTTP 代理 | ✅ |
-| `proto/<module>/*.swagger.yaml` | OpenAPI 2.0 文档 | ✅ |
+| `proto/<module>/*.swagger.yaml` | 按模块拆分的 OpenAPI 2.0 文档 | ✅ |
+| `docs/openapi.swagger.yaml` | 全部模块合并的聚合文档 | ✅ |
 
 全部入库的原因：下游按 commit hash 引用本仓库，不入库就是一个没有 Go 代码的空模块。
 [EN] Everything is committed because downstream pins this repo by commit hash; without the
@@ -95,6 +102,7 @@ cp -r proto/<% .MixedModule %> proto/<module>
 | 1 | `scripts/generate-modular.sh` 与 `.bat` 的 `PROTO_SERVICE_MODULES` | 完全不会被生成，CI 也不报错 |
 | 2 | `swagger_embed.go` 的 `//go:embed` 与 `SwaggerFiles` | 文档站拿不到这个服务的 swagger |
 | 3 | `resources/<% .GatewayPrefix %>-dev.yaml` 的 `aggregate.services` | 网关不聚合，接口在文档里不可见 |
+| 4 | `proto/openapi/bundle.proto` 的 `tags` | 聚合文档里这个分组只有名字没有描述 |
 
 ## 常见故障 | Troubleshooting
 
@@ -107,6 +115,9 @@ cp -r proto/<% .MixedModule %> proto/<module>
 | struct 没有 `validate` tag | proto 注释里 `@inject_tag` 写错位置（必须在双语注释之后空一格）|
 | `go mod tidy` 找不到 `pb/...` | 还没生成，先 generate 再 tidy |
 | CI 自动提交了 pb 改动 | 正常：`generate-pb.yml` 在 `<% .BaseBranch %>` 上会把生成结果补齐 |
+| 没生成 `docs/openapi.swagger.yaml` | `proto/openapi/bundle.proto` 被删了，或所有 proto 都没有 HTTP 注解 |
+| 聚合文档每次生成都有巨量 diff | 把输出改成了 json。后处理工具对 json 会过一遍 Go map，字段顺序随机，必须用 yaml |
+| 发版被「生成物未同步」拦住 | 本地跑一次 `bash scripts/generate-modular.sh` 并提交结果 |
 
 ## 环境准备脚本 | Setup scripts
 

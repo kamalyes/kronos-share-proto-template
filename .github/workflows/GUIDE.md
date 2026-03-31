@@ -2,23 +2,70 @@
 
 ## 📋 工作流概览
 
-### 主流程编排
+### 本仓库的工作流
 
-- **[pipeline.yml](pipeline.yml)** - 主 CI/CD 流程编排器，协调所有子工作流
+| 工作流 | 触发 | 作用 |
+| --- | --- | --- |
+| **[release.yml](release.yml)** | 手动 / 推送 `v*` tag | 协议发版：校验生成物 → 打 tag → 发 Release 与聚合文档资产 → 通知下游 |
+| **[generate-pb.yml](generate-pb.yml)** | `proto/**` 变更（push / PR / 手动）| pb 自动生成并提交；PR 阶段只验证并把 diff 评论到 PR |
+| **[pipeline.yml](pipeline.yml)** | push `dev` / tag / 手动 | 文档网关的构建、镜像、部署与代码质量检查 |
+| **[pr-opened-notify.yml](pr-opened-notify.yml)** | PR 开启 | 变更摘要评论 + 飞书通知 |
+| **[pr-merged-notify.yml](pr-merged-notify.yml)** | PR 合并 | 合并通知 |
 
-### 子工作流（单一职责）
+### 被复用的子工作流（在 deploy-pipeline，不在本仓库）
 
-- **[code-quality.yml](code-quality.yml)** - 代码质量检查（格式化、静态分析、单元测试）
-- **[build-binary.yml](build-binary.yml)** - 构建 Go 二进制文件（支持 UPX 压缩）
-- **[test-connect-ssh.yml](test-connect-ssh.yml)** - SSH 连接测试（服务器诊断、权限检查）
-- **[build-docker.yml](build-docker.yml)** - 构建并推送 Docker 镜像
-- **[deploy-scp.yml](deploy-scp.yml)** - SCP 部署到远程 Linux 服务器（多环境支持）
-- **[deploy-k8s.yml](deploy-k8s.yml)** - 部署到 Kubernetes 集群
-- **[rollback.yml](rollback.yml)** - 版本回滚（从归档中恢复指定版本）
+`pipeline.yml` 与两个 notify 工作流通过 `uses:` 引用 `<% .PipelineRepo %>` 里的公共工作流：
+`code-quality.yml`、`backend-build-binary.yml`、`backend-build-docker.yml`、
+`backend-deploy-k8s.yml`、`pr-opened-notify.yml`、`pr-merged-notify.yml`，
+以及 composite action `notify` 与 `update-proto-mod`。
+本文件后半部分讲的 Secrets、环境配置、SSH 等内容都是为它们准备的。
 
-### 定时任务
+---
 
-- **[cleanup-images.yml](cleanup-images.yml)** - 清理旧版本镜像（每周日凌晨 2 点执行）
+## 🏷️ 协议发版（release.yml）
+
+```text
+  手动跑 Release Contract（patch / minor / major / 指定版本 / dry-run）
+  或 push 一个 v* tag
+            │
+            ├─ 1. 算版本号：没给就按上一个 tag 递增，并顺带算出 major/minor/patch 级别
+            ├─ 2. 装工具链、重新生成全部产物
+            ├─ 3. go mod tidy / go build / go test
+            ├─ 4. 与仓库里的 pb 逐字节比对 —— 有差异直接失败
+            ├─ 5. 产出资产：聚合文档（info.version 对齐本次版本）+ 按模块拆分的 tar
+            ├─ 6. 写发布说明：引用方式、变更的 proto、可能的不兼容变更、提交明细
+            ├─ 7. 打 tag（手动模式）、建 Release 并上传资产
+            ├─ 8. 预热公共 Go module 代理（私有仓库失败不算错）
+            └─ 9. repository_dispatch 通知下游 Go 服务与 TS SDK 仓库
+```
+
+### 为什么两个入口合成一个 job
+
+用 `GITHUB_TOKEN` 推送的 tag **不会触发任何工作流**（GitHub 为防递归的硬性限制）。
+如果拆成「打 tag 的 job」+「tag 触发的发布 job」，就必须额外配一个 PAT 才能跑通。
+合成一个 job 之后，核心发版流程零额外凭证要求。
+
+### 发版被拦住的几种情况
+
+| 失败信息 | 原因 | 处理 |
+| --- | --- | --- |
+| `版本号格式非法` | 版本号不是 `vX.Y.Z` 或 `vX.Y.Z-rc.1` | 按格式重填 |
+| `生成物与 proto 不一致，拒绝发版` | 有人改了 proto 没重新生成，或手改了生成物 | 本地跑 `bash scripts/generate-modular.sh` 并提交 |
+| `缺少聚合文档` | `proto/openapi/bundle.proto` 被删了 | 恢复该文件 |
+| `版本号没写进聚合文档` | 文档 info 块格式变了，sed 没匹配上 | 检查 `docs/openapi.swagger.yaml` 开头的 `  version:` 行 |
+| `送达失败（检查 App 是否安装到 xxx）` | GitHub App 没装到目标仓库 | 在组织设置里把 App 的安装范围加上该仓库 |
+
+### 下游通知需要的配置
+
+| 配置项 | 类型 | 说明 |
+| --- | --- | --- |
+| `DOWNSTREAM_REPOS` | 仓库变量 | 下游 Go 服务仓库，逗号分隔；覆盖模板变量 `DownstreamRepos` |
+| `SDK_REPO` | 仓库变量 | TypeScript SDK 仓库；覆盖模板变量 `SdkRepo` |
+| `OPS_CLI_APP_ID` | 仓库 Secret | GitHub App ID，跨仓库 dispatch 用 |
+| `OPS_CLI_APP_PRIVATE_KEY` | 仓库 Secret | 同上的私钥 |
+| `FEISHU_WEBHOOK_URL` | 仓库 Secret | 发版结果通知（可选）|
+
+没配 App 时发版照常完成，只是跳过第 9 步。
 
 ---
 
