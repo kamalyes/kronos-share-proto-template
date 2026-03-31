@@ -24,3 +24,13 @@ func GetSwaggerFile(name string) ([]byte, bool) {
 func GetSwaggerFileNames() []string {
 	return nil
 }
+
+// OpenAPIBundle 未启用 swagger 标签时为空，避免把聚合文档嵌进二进制
+// [EN] Empty without the swagger build tag, so the bundle stays out of the binary
+var OpenAPIBundle []byte
+
+// GetOpenAPIBundle 返回聚合 OpenAPI 文档（未启用标签时为空）
+// [EN] Return the aggregated OpenAPI document (empty without the build tag)
+func GetOpenAPIBundle() []byte {
+	return nil
+}

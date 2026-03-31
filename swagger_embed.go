@@ -43,6 +43,19 @@ var <% .MixedService | pascal %>ServiceSwagger []byte
 //go:embed proto/<% .MixedModule %>/<% .MixedService | snake %>_member_service.swagger.yaml
 var <% .MixedService | pascal %>MemberServiceSwagger []byte
 
+// 聚合 OpenAPI 文档 | Aggregated OpenAPI document
+//
+// 它不进 SwaggerFiles：那张表是「按服务拆分」的文档，网关据此做分页聚合；
+// 这份是已经合并好的单文件，给只想要一个 /openapi.json 端点的服务用。
+// 两者内容重叠，同时暴露没有坏处，但不要把它当成第五个服务塞进聚合列表。
+//
+// [EN] Deliberately not part of SwaggerFiles: that map holds the per-service documents the
+// gateway aggregates itself. This is the pre-merged single file, for services that only want
+// to expose one /openapi.json endpoint. The two overlap in content, which is harmless, but
+// do not add this one to the aggregation list as if it were a fifth service.
+//go:embed docs/openapi.swagger.yaml
+var OpenAPIBundle []byte
+
 // SwaggerFiles 全部 swagger 文件，键为相对仓库根的路径。
 // [EN] All swagger files, keyed by repository-relative path
 var SwaggerFiles = map[string][]byte{
@@ -70,4 +83,9 @@ func GetSwaggerFileNames() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+// GetOpenAPIBundle 返回聚合 OpenAPI 文档 | Return the aggregated OpenAPI document
+func GetOpenAPIBundle() []byte {
+	return OpenAPIBundle
 }

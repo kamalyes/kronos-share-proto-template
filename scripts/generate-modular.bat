@@ -12,6 +12,15 @@ rem Service module list: a new module must be registered here or it will not be 
 set "PROTO_SERVICE_MODULES=common <% .ExampleModule %> <% .SecondModule %> <% .MixedModule %>"
 set "PROTO_ALL_MODULES=%PROTO_BASE_MODULES% %PROTO_SERVICE_MODULES%"
 
+rem 聚合 OpenAPI 文档：全部业务 proto 合成一份静态文件，供下游多语言 SDK 与 API 门户消费
+rem 必须输出 yaml：后处理工具对 json 会经过 Go map 导致字段顺序随机，入库后每次生成都有巨量无意义 diff
+rem [EN] Aggregated OpenAPI document: every business proto merged into one static file for
+rem downstream multi-language SDK generators and API portals. It must be yaml: the post-processor
+rem round-trips json through a Go map, randomizing key order and producing huge spurious diffs
+set "OPENAPI_BUNDLE_DIR=docs"
+set "OPENAPI_BUNDLE_FILE=docs\openapi.swagger.yaml"
+set "OPENAPI_BUNDLE_INFO_PROTO=proto\openapi\bundle.proto"
+
 call "%SCRIPT_DIR%common.bat" log_info "生成 Protobuf 文件 (分模块结构)..."
 
 call "%SCRIPT_DIR%common.bat" require_script "setup-all.bat"
@@ -121,9 +130,13 @@ if exist "proto\*.swagger.yaml" (
     )
 )
 
+call :generate_openapi_bundle
+if errorlevel 1 exit /b 1
+
 call "%SCRIPT_DIR%common.bat" log_success "Protobuf 文件生成完成"
 call "%SCRIPT_DIR%common.bat" log_success "结构体标签注入完成"
 call "%SCRIPT_DIR%common.bat" log_success "Swagger 文件处理完成"
+if exist "%OPENAPI_BUNDLE_FILE%" call "%SCRIPT_DIR%common.bat" log_success "聚合 OpenAPI 文档生成完成: %OPENAPI_BUNDLE_FILE%"
 echo.
 echo 生成的 Go 文件：
 for %%m in (%PROTO_ALL_MODULES%) do (
@@ -144,6 +157,59 @@ echo   1. go mod tidy
 echo   2. go run bootstrap
 exit /b 0
 
+:generate_openapi_bundle
+rem 与网关文档站的区别：网关（bootstrap/）在运行时合并各模块 swagger 成一个可浏览站点，
+rem 只有跑着服务才看得到；这里产出的是静态文件，入库后下游不用起服务就能拿到完整契约
+rem [EN] How this differs from the docs gateway: the gateway merges per-module swagger at
+rem runtime and needs a running service; this produces a committed static file so downstream
+rem consumers get the full contract without starting anything
+if not exist "%OPENAPI_BUNDLE_INFO_PROTO%" (
+    call "%SCRIPT_DIR%common.bat" log_warn "未找到 %OPENAPI_BUNDLE_INFO_PROTO%，跳过聚合文档生成"
+    exit /b 0
+)
+rem 元信息 proto 必须排在第一个：合并后的 info 取自参数列表里的第一个文件
+rem [EN] The metadata proto must come first: the merged info comes from the first file
+set "BUNDLE_PROTOS=%OPENAPI_BUNDLE_INFO_PROTO%"
+set "BUNDLE_HAS_SERVICE="
+for %%m in (%PROTO_SERVICE_MODULES%) do (
+    for %%f in (proto\%%m\*.proto) do (
+        findstr /c:"openapiv2_swagger" /c:"google.api.http" "%%f" >nul 2>nul
+        if not errorlevel 1 (
+            set "BUNDLE_PROTOS=!BUNDLE_PROTOS! %%f"
+            set "BUNDLE_HAS_SERVICE=true"
+        )
+    )
+)
+for %%f in (proto\*.proto) do (
+    findstr /c:"openapiv2_swagger" /c:"google.api.http" "%%f" >nul 2>nul
+    if not errorlevel 1 (
+        set "BUNDLE_PROTOS=!BUNDLE_PROTOS! %%f"
+        set "BUNDLE_HAS_SERVICE=true"
+    )
+)
+if "!BUNDLE_HAS_SERVICE!"=="" (
+    call "%SCRIPT_DIR%common.bat" log_warn "没有带 HTTP 注解的 proto，跳过聚合文档生成"
+    exit /b 0
+)
+if not exist "%OPENAPI_BUNDLE_DIR%" mkdir "%OPENAPI_BUNDLE_DIR%"
+call "%SCRIPT_DIR%common.bat" log_info "生成聚合 OpenAPI 文档..."
+protoc "%PLUGIN_OPENAPIV2%" -I"%PROTOC_INCLUDE%" %GOOGLEAPIS_PATH% %GRPC_GATEWAY_PATH% -I. --openapiv2_out="%OPENAPI_BUNDLE_DIR%" --openapiv2_opt=logtostderr=true --openapiv2_opt=json_names_for_fields=false --openapiv2_opt=output_format=yaml --openapiv2_opt=allow_merge=true --openapiv2_opt=merge_file_name=openapi !BUNDLE_PROTOS!
+if errorlevel 1 (
+    call "%SCRIPT_DIR%common.bat" log_error "聚合 OpenAPI 文档生成失败，已中断"
+    exit /b 1
+)
+rem 聚合文档走同一套后处理：剥掉 description 里的 @inject_tag，并把 validate 约束
+rem 翻译成 swagger 的 required/minLength/pattern 等字段
+rem [EN] Same post-processing as the per-module files: strip @inject_tag from descriptions
+rem and translate validate constraints into swagger fields
+call "%SCRIPT_DIR%common.bat" log_info "处理聚合文档：清理 @inject_tag 污染并注入约束..."
+"%PROTOC_GO_INJECT_TAG%" swagger --proto-dir=proto -s="%OPENAPI_BUNDLE_FILE%" -v
+if errorlevel 1 (
+    call "%SCRIPT_DIR%common.bat" log_error "聚合文档处理失败"
+    exit /b 1
+)
+exit /b 0
+
 :clean_proto_outputs
 call "%SCRIPT_DIR%common.bat" log_info "清理旧的 proto 目录生成文件..."
 del /q proto\*.pb.go 2>nul
@@ -151,6 +217,7 @@ del /q proto\*_grpc.pb.go 2>nul
 del /q proto\*.gw.go 2>nul
 del /q proto\*.swagger.json 2>nul
 del /q proto\*.swagger.yaml 2>nul
+del /q "%OPENAPI_BUNDLE_FILE%" 2>nul
 for /d %%d in (proto\*) do (
     del /q "%%d\*.pb.go" 2>nul
     del /q "%%d\*_grpc.pb.go" 2>nul
