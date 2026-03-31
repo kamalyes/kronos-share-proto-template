@@ -1,0 +1,131 @@
+# ============================================================================
+# 下游服务的协议同步工作流（复制到业务服务仓库使用）
+# Proto sync workflow for downstream services — copy this into a service repository
+#
+# 这个文件故意放在 docs/ 而不是 .github/workflows/：它不是本仓库要跑的流水线，
+# 而是给「引用本协议中心的业务服务」用的模板放进 .github/workflows/ 的话，
+# GitHub 会在协议中心仓库里也解析并尝试运行它
+#
+# 用法 | Usage:
+#   1. 复制到业务服务仓库的 .github/workflows/proto-sync.yml
+#   2. 在协议中心仓库配置 DOWNSTREAM_REPOS（或模板变量 DownstreamRepos）把本服务登记进去
+#   3. 协议中心每次发版，这里就会自动 go get 新版本、go mod tidy、go build 验证后推送
+#
+# 它解决什么问题：协议改了但服务没升级，是协议中心这种架构最常见的事故
+# 靠人记得去 go get 是不可靠的，所以改成「发版推一把，下游自动升级并自证能编译」
+# go build 失败时不推送（exit 2），因为这正说明接口发生了需要人工适配的变更
+#
+# [EN] This file deliberately lives in docs/ rather than .github/workflows/: it is not a
+# pipeline for this repository but a template for the business services that consume this
+# contract hub. Placed under .github/workflows/, GitHub would parse and try to run it here too.
+#
+# Usage:
+#   1. Copy it to .github/workflows/proto-sync.yml in the service repository
+#   2. Register that repository in DOWNSTREAM_REPOS (or the DownstreamRepos template variable)
+#      of the contract hub
+#   3. Every hub release then triggers go get, go mod tidy and a go build check before pushing
+#
+# What it solves: a changed contract with un-upgraded services is the classic failure of a
+# contract-hub architecture. Relying on people to remember `go get` does not work, so the hub
+# pushes and the downstream upgrades itself and proves it still compiles. A failed go build
+# (exit 2) blocks the push, because that is exactly the case that needs a human.
+# ============================================================================
+
+name: Proto Sync
+
+run-name: 📦 [proto-sync] ${{ github.event.client_payload.version || inputs.module-ref }}
+
+permissions:
+  contents: write
+
+on:
+  # 协议中心发版后由 release.yml 的 repository_dispatch 触发
+  # [EN] Triggered by the contract hub's release.yml through repository_dispatch
+  repository_dispatch:
+    types:
+      - proto-released
+  # 手动补升级入口：填一个 tag 或分支名
+  # [EN] Manual entry point: give a tag or a branch name
+  workflow_dispatch:
+    inputs:
+      module-ref:
+        description: '协议版本（如 v1.4.0，或分支名）| Contract version such as v1.4.0, or a branch name'
+        required: true
+        type: string
+        default: '<% .BaseBranch %>'
+
+concurrency:
+  group: proto-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Upgrade Proto Dependency
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: <% .BaseBranch %>
+          fetch-depth: 0
+
+      - name: 🐹 Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: 🔑 Mint Proto Read Token
+        id: proto-token
+        # 协议中心是私有仓库时，go get 需要一个能读它的 token
+        # 公开仓库可以整步删掉，PROTO_READ_TOKEN 留空即可
+        # [EN] A private contract hub needs a token that can read it. For a public hub, delete
+        # this step and leave PROTO_READ_TOKEN empty
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.OPS_CLI_APP_ID }}
+          private-key: ${{ secrets.OPS_CLI_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: 🧮 Resolve Module Name
+        id: resolve
+        env:
+          # dispatch 带来的是完整模块路径（github.com/org/xxx-share-proto），
+          # 而 update-proto-mod 要的是末段的仓库名，它自己会补 github.com/<org>/
+          # [EN] The dispatch carries the full module path while update-proto-mod wants the
+          # trailing repository name and prefixes github.com/<org>/ itself
+          PAYLOAD_MODULE: ${{ github.event.client_payload.module }}
+          PAYLOAD_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_REF: ${{ inputs.module-ref }}
+        run: |
+          set -euo pipefail
+          MODULE="${PAYLOAD_MODULE:-github.com/${{ github.repository_owner }}/<% .ProjectName %>}"
+          echo "module=${MODULE##*/}" >> "$GITHUB_OUTPUT"
+          echo "module-ref=${PAYLOAD_VERSION:-${INPUT_REF}}" >> "$GITHUB_OUTPUT"
+          echo "📦 ${MODULE##*/} → ${PAYLOAD_VERSION:-${INPUT_REF}}"
+
+      - name: 📦 Upgrade Proto Module
+        id: upgrade
+        uses: <% .PipelineRepo %>/.github/actions/update-proto-mod@master
+        env:
+          PROTO_READ_TOKEN: ${{ steps.proto-token.outputs.token }}
+          PUSH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          branch: <% .BaseBranch %>
+          module: ${{ steps.resolve.outputs.module }}
+          module-ref: ${{ steps.resolve.outputs.module-ref }}
+
+      - name: 📢 Notify Lark
+        if: always()
+        uses: <% .PipelineRepo %>/.github/actions/notify@master
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+        with:
+          provider: feishu
+          status: ${{ job.status == 'success' && 'success' || 'failure' }}
+          title: ${{ job.status == 'success' && '📦 协议依赖已同步' || '❌ 协议依赖同步失败（可能是接口不兼容，需人工适配）' }}
+          message: |
+            **服务**：`${{ github.repository }}`
+            **协议**：`${{ steps.resolve.outputs.module }}@${{ steps.resolve.outputs.module-ref }}`
+            **结果**：${{ steps.upgrade.outputs.summary || '见运行日志' }}

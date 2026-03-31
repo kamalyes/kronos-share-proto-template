@@ -182,6 +182,29 @@ questions:
     default: kamalyes/deploy-pipeline
     required: true
 
+  # --------------------------------------------------------------------------
+  # 发版与下游联动 | Release and downstream fan-out
+  #
+  # 协议中心一发版，下游就该跟着动：Go 服务升 go.mod，TS SDK 重新生成并发 npm。
+  # 这两个值填的是「通知谁」，留空就只发版不通知。
+  # 填了之后仍可用仓库变量 DOWNSTREAM_REPOS / SDK_REPO 覆盖，
+  # 这样新增一个服务不必重新渲染模板。
+  #
+  # [EN] When the contract hub releases, downstream should follow: Go services bump go.mod and
+  # the TS SDK regenerates and publishes to npm. These two values say WHOM to notify; leave them
+  # empty to release without notifying. The DOWNSTREAM_REPOS / SDK_REPO repository variables
+  # override them later, so adding a service needs no template re-render
+  # --------------------------------------------------------------------------
+  - name: DownstreamRepos
+    prompt: "下游 Go 服务仓库（逗号分隔，可写 repo 或 owner/repo；留空不通知）| Downstream Go service repositories, comma separated"
+    type: string
+    default: ""
+
+  - name: SdkRepo
+    prompt: "TypeScript SDK 仓库（由 openapi-ts-sdk-template 生成；留空不通知）| TypeScript SDK repository generated from openapi-ts-sdk-template"
+    type: string
+    default: ""
+
 # ============================================================================
 # 忽略规则 | Ignore rules
 # ============================================================================
