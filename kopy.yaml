@@ -2,7 +2,7 @@
 # kopy 模板配置 | kopy template configuration
 #
 # 用法 | Usage:
-#   kopy new @kamalyes/kronos-share-proto-template -o ./my-share-proto
+#   kopy new https://github.com/kamalyes/kronos-share-proto-template -o ./my-share-proto
 #   kopy list ./kronos-share-proto-template        # 查看全部变量 | inspect variables
 #
 # ⚠️ 定界符是 <% %>，不是 kopy 默认的 [[ ]] | Delimiters are <% %>, NOT the default [[ ]]
@@ -212,6 +212,19 @@ ignore:
 # Note "__module2__" does not contain "__module__", so the rules never collide
 # ============================================================================
 rename:
+  # 工作流文件在模板仓库里带 .tpl 后缀，渲染时去掉。
+  # 原因：GitHub Actions 会解析模板仓库自己的 .github/workflows/*.yml，
+  # 而里面全是未渲染的占位符（uses: <% .PipelineRepo %>/... 不是合法的 owner/repo 引用，
+  # branches: - <% .BaseBranch %> 也会被 YAML 读成嵌套序列），模板仓库会一直挂着红叉。
+  # 加 .tpl 后 GitHub 不再把它们当工作流，生成项目里又能正常还原。
+  #
+  # [EN] Workflow files carry a .tpl suffix inside the template repository and lose it on
+  # render. GitHub Actions parses .github/workflows/*.yml of the template repo itself, where
+  # the placeholders are still unrendered: `uses: <% .PipelineRepo %>/...` is not a valid
+  # owner/repo reference and `branches: - <% .BaseBranch %>` parses as a nested sequence, so
+  # the template repo would permanently show a failed workflow check.
+  - pattern: ".yml.tpl"
+    value: ".yml"
   - pattern: "README.md"
     value: "__kopy_template_doc__"
   - pattern: "readme-en.tpl"

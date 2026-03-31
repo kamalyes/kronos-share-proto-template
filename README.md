@@ -59,10 +59,10 @@ go install github.com/kamalyes/kopy@latest     # 模板渲染 | render the templ
 
 ```bash
 # 交互式：逐项确认 18 个变量 | interactive
-kopy new @kamalyes/kronos-share-proto-template -o ./my-share-proto
+kopy new https://github.com/kamalyes/kronos-share-proto-template -o ./my-share-proto
 
 # 非交互：用 --var 跳过全部提问 | non-interactive
-kopy new @kamalyes/kronos-share-proto-template -o ./demo-share-proto \
+kopy new https://github.com/kamalyes/kronos-share-proto-template -o ./demo-share-proto \
   --var OrgName=kamalyes \
   --var OrgPrefix=demo \
   --var ProjectName=demo-share-proto \
@@ -88,6 +88,17 @@ kopy new ./kronos-share-proto-template -o /tmp/preview --dry-run
 # 查看全部变量与默认值 | list variables and defaults
 kopy list ./kronos-share-proto-template
 ```
+
+> ⚠️ 必须用完整的 Git 地址。kopy README 里写的 `@owner/repo` 简写在当前版本**并未实现**：
+> `source.isGitURL` 只认 `https://` / `http://` / `git@` / `git://` 或 `.git` 结尾，
+> 传 `@kamalyes/xxx` 会被当成本地路径，报「访问模板源路径失败」。
+> 带分支就用 `https://github.com/owner/repo#branch`。
+>
+> [EN] Use the full Git URL. The `@owner/repo` shorthand documented in kopy's README is not
+> implemented in the current release: `source.isGitURL` only accepts `https://`, `http://`,
+> `git@`, `git://` or a `.git` suffix, so `@kamalyes/xxx` is treated as a local path and fails
+> with "访问模板源路径失败". Append `#branch` to the URL to pick a branch.
+
 
 ### 初始化生成出来的项目 | Bootstrap the output
 
@@ -160,9 +171,8 @@ kronos-share-proto-template/
 ├── swagger_embed.go / _stub.go     # swagger 嵌入（build tag 分流）
 ├── go.mod                          # 依赖：grpc / protobuf / gateway / argus / go-config
 ├── .github/
-│   ├── workflows/generate-pb.yml   # pb 自动生成 + PR 同步验证
-│   ├── workflows/pipeline.yml      # CI/CD 流水线
-│   ├── workflows/pr-*-notify.yml   # PR 通知
+│   ├── workflows/*.yml.tpl         # 工作流模板：pb 自动生成、CI/CD、PR 通知
+│   │                               # 带 .tpl 是为了不让 GitHub 解析模板仓库自己的工作流
 │   ├── workflows/GUIDE.md          # 流水线详解
 │   ├── PIPELINE_CONFIG.md          # 需要配置的 vars / secrets
 │   ├── copilot-instructions.md     # commit message 规范
