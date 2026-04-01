@@ -1,54 +1,107 @@
 ---
-name: "proto-conventions"
-description: "Protobuf 定义规范的检查与修正：文件结构、双语注释、命名、公共类型抽取、@inject_tag 校验标签、接口形态与 URL 约定、代码生成流程。当用户编写或修改 .proto 文件、要求审查 proto 风格、或需要统一 proto 注释规范时触发。"
+name: "<% .OrgPrefix %>-proto-style"
+description: "<% .ProjectName %> 的 Protobuf 规范与检查修正：目录结构、文件头与 import 顺序、分节分隔线、双语注释、命名、公共类型抽取、@inject_tag 校验标签速查、接口形态与 URL 约定、完整示例、代码生成流程、新增模块清单。当用户编写或修改 .proto 文件、要求审查 proto 风格、或需要统一 proto 注释规范时触发。Enforces the proto conventions of <% .ProjectName %>; invoke when creating, editing or reviewing any .proto file."
 ---
 
-# Protobuf 定义规范
+# <% .OrgPrefix | pascal %> Proto 规范 | Proto Conventions
 
-本规范适用于所有业务模块的 `.proto` 文件，确保跨模块风格一致。
-完整的目录分工见 `proto/CONVENTIONS.md`，风格速查见 `.vscode/skills/<% .OrgPrefix %>-proto-style/SKILL.md`。
+本文件是 `<% .ProjectName %>` 下所有 `.proto` 的唯一规范，新增或修改 proto 时必须遵守
+目录分工速查见 `proto/CONVENTIONS.md`
+
+[EN] This is the single source of truth for every `.proto` in `<% .ProjectName %>` and must be
+followed when creating or modifying one. `proto/CONVENTIONS.md` is the directory cheat sheet
+
+> 规范是为了让「谁写的都一样」：协议会被多个服务、多种语言、多年时间消费，
+> 风格不统一的代价不是难看，而是每个下游都要为差异写一遍适配
+>
+> [EN] Conventions exist so that authorship becomes invisible: a contract is consumed by
+> many services, several languages and for years. Inconsistency does not merely look
+> bad, it makes every downstream write its own adapter for the differences
 
 ---
 
-## 1. 文件结构
+## 1. 目录结构与命名 | Layout and naming
 
-每个 `.proto` 文件按以下顺序组织：
-
+```text
+proto/
+├── common/                  # 跨模块复用的消息 | messages reused across modules
+│   ├── common.proto         # 聚合文件，import public 所有子文件 | aggregation file
+│   ├── pagination.proto     # Paging / Sorting
+│   ├── result.proto         # Result / Error / BatchResult
+│   ├── empty.proto          # GeneralEmptyRequest / Response
+│   └── <module>.proto       # 各模块的公共实体 | per-module shared entities
+├── enums/                   # 全部枚举 | every enum
+│   ├── enums.proto          # 聚合文件 | aggregation file
+│   ├── status.proto         # CommonStatus / TrueOrFalse / SortDirection
+│   └── <module>.proto       # 各模块的枚举 | per-module enums
+├── <% .ExampleModule %>/    # 业务模块：完整 CRUD 示例 | business module: full CRUD example
+├── <% .SecondModule %>/     # 业务模块：第二个 CRUD 示例 | second CRUD example
+└── <% .MixedModule %>/      # 混合模块：一个模块多个 service 文件 | mixed module, several service files
+    ├── <% .MixedService | snake %>_service.proto         # 聚合根 | aggregate root
+    └── <% .MixedService | snake %>_member_service.proto  # 成员 | members
 ```
-syntax / import / option / package / swagger 配置
-分隔线：消息定义
-分隔线：服务定义
-```
 
-### 推荐写法
+### 文件命名 | File naming
+
+| 类型 \| Kind | 命名 \| Pattern | 示例 \| Example |
+| --- | --- | --- |
+| 服务文件 | `{service}_service.proto` | `<% .ExampleService | snake %>_service.proto` |
+| 枚举子文件 | `{module}.proto` | `enums/<% .ExampleModule %>.proto` |
+| 公共消息子文件 | `{module}.proto` | `common/<% .ExampleModule %>.proto` |
+| 聚合文件 | `{dir}.proto` | `enums.proto` / `common.proto` |
+
+### 模块划分原则 | How to split modules
+
+一个模块是一个**限界上下文**，不是一个数据库表：按「谁来调、为什么调」划分，
+而不是按实体数量划分模块太细会让 common/ 爆炸，太粗会让一次改动牵连无关服务
+
+[EN] A module is a **bounded context**, not a database table: split by who calls it and
+why, never by entity count. Too fine and common/ explodes; too coarse and one change
+drags unrelated services along
+
+---
+
+## 2. 文件头与 import 顺序 | File header and import order
 
 ```protobuf
 syntax = "proto3";
 
 import "google/api/annotations.proto";
-import "google/protobuf/struct.proto";
-import "google/protobuf/timestamp.proto";
-import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";          // 按需 | as needed
+import "google/protobuf/wrappers.proto";           // 按需 | as needed
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "proto/common/common.proto";
 import "proto/enums/enums.proto";
 
-option go_package = "<% .ModuleName %>/pb/<module>";
-option java_package = "<% .JavaPackage %>.<module>";
-package <% .ProtoPackage %>.<module>;
+option go_package = "<% .ModuleName %>/pb/{module}";
+option java_package = "<% .JavaPackage %>.{module}";
+package <% .ProtoPackage %>.{module};
 
-option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = { ... };
-
-//===========================  消息定义 | Message Definitions  ==========================//
-
-// ... messages ...
-
-//===========================  服务定义 | Service Definition  ==========================//
-
-service XxxService { ... }
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "<% .OrgPrefix | pascal %> {Service} Service"
+    description: "中文描述 | English description"
+    version: "1.0.0"
+  }
+  tags: [
+    {
+      name: "{Tag}"
+      description: "中文标签 | English tag"
+    }
+  ]
+};
 ```
 
-### 约束
+### import 顺序 | Import order
+
+1. `google/api/annotations.proto`
+2. `google/protobuf/*.proto`（timestamp / wrappers，按需）
+3. `protoc-gen-openapiv2/options/annotations.proto`
+4. `proto/common/common.proto`
+5. `proto/enums/enums.proto`
+6. 其它业务模块 | other business modules
+
+### 其他约束 | Further constraints
 
 - import 按以下分组排序：`google/` → `protoc-gen-openapiv2/` → `proto/common/` → `proto/enums/` → `proto/业务模块/`
 - 同组内按字母序排列
@@ -57,7 +110,7 @@ service XxxService { ... }
 
 ---
 
-## 2. 分隔线
+## 3. 分节分隔线 | Section separators
 
 用分隔线划分逻辑区域，格式固定：
 
@@ -65,23 +118,29 @@ service XxxService { ... }
 //===========================  中文标题 | English Title  ==========================//
 ```
 
-### 必须使用的分隔线位置
+### 必须使用的分隔线位置 | Where separators are mandatory
 
 | 位置 | 中文 | English |
 |------|------|---------|
 | 消息定义区开头 | `XXX消息定义` | `XXX Message Definitions` |
 | 服务定义区开头 | `服务定义` | `Service Definition` |
 
-### 不推荐
+### 不推荐 | Discouraged
 
 - 使用 `// ---` 或 `// ===` 等不一致的分隔符
 - 分隔线中缺少中英文双语
 
 ---
 
-## 3. Message 注释
+## 4. 双语注释（强制）| Bilingual comments (mandatory)
 
-### 3.1 Message 头注释（必须）
+注释是协议唯一的人类可读层：生成出来的 Go / Java / TS 代码会把它原样带走，
+漏一条就是下游永远看不到的那条说明
+
+[EN] Comments are the contract's only human-readable layer: the generated Go, Java and TS
+carry them verbatim, so a missing one is documentation the downstream will never see
+
+### 4.1 Message 头注释（必须）| Message header comment (mandatory)
 
 每个 message 必须有双语头注释，格式为两行：
 
@@ -91,7 +150,7 @@ service XxxService { ... }
 message XxxInfo {
 ```
 
-### 3.2 Field 注释（必须）
+### 4.2 Field 注释（必须）| Field comment (mandatory)
 
 每个字段必须有行尾注释，格式：
 
@@ -138,7 +197,7 @@ message XxxListRequest {
 }
 ```
 
-### 3.3 空消息
+### 4.3 空消息 | Empty messages
 
 无字段的 message 也要有头注释：
 
@@ -148,11 +207,7 @@ message XxxListRequest {
 message XxxTypesRequest {}
 ```
 
----
-
-## 4. Service 注释
-
-### 4.1 Service 描述（必须）
+### 4.4 Service 描述（必须）| Service description (mandatory)
 
 ```protobuf
 service XxxService {
@@ -161,7 +216,7 @@ service XxxService {
   };
 ```
 
-### 4.2 RPC 方法注释（必须）
+### 4.5 RPC 方法注释（必须）| RPC comment (mandatory)
 
 每个 rpc 方法上方必须有双语注释：
 
@@ -171,7 +226,7 @@ service XxxService {
   rpc XxxList(XxxListRequest) returns (XxxListResponse) {
 ```
 
-### 4.3 swagger summary（必须）
+### 4.6 swagger summary（必须）| swagger summary (mandatory)
 
 summary 使用 `中文 | English` 格式：
 
@@ -182,7 +237,7 @@ summary 使用 `中文 | English` 格式：
     };
 ```
 
-### 不推荐
+### 不推荐 | Discouraged
 
 ```protobuf
 // rpc 方法缺少注释
@@ -195,9 +250,19 @@ summary: "List items"
 
 ---
 
-## 5. 命名规范
+## 5. 命名规范 | Naming
 
-### 5.1 Message 命名
+| 对象 \| Object | 规范 \| Rule | 示例 \| Example |
+| --- | --- | --- |
+| message | PascalCase，`{Service}{Action}{Request/Response}` | `ProductCreateRequest` |
+| 字段 | lower_snake_case | `tenant_id` |
+| service | `{Service}Service` | `ProductService` |
+| rpc | `{Service}{Action}` | `ProductCreate` |
+| 枚举类型 | PascalCase | `CommonStatus` |
+| 枚举值 | UPPER_SNAKE_CASE，带类型前缀 | `COMMON_STATUS_NORMAL` |
+| 枚举零值 | 必须是 `*_UNSPECIFIED = 0` | `PRODUCT_TYPE_UNSPECIFIED = 0` |
+
+### 5.1 Message 命名速查 | Message name patterns
 
 | 类型 | 格式 | 示例 |
 |------|------|------|
@@ -213,54 +278,111 @@ summary: "List items"
 | 状态更新请求 | `XxxUpdateStatusRequest` | `UserUpdateStatusRequest` |
 | 状态更新响应 | `XxxUpdateStatusResponse` | `UserUpdateStatusResponse` |
 
-### 5.2 字段命名
+### 5.2 字段与 service | Fields and services
+
+**字段 | Fields**
 
 - 使用 `snake_case`
 - 可选字段使用 `google.protobuf.StringValue` / `Int64Value` 等包装类型
 - 结构化数据使用 `google.protobuf.Struct`
 - 时间字段使用 `google.protobuf.Timestamp`
 
-### 5.3 Service 命名
+**Service | Services**
 
 - 格式：`XxxService`；同一模块下的从属 service 用 `Xxx<子实体>Service`，如 `<% .MixedService | pascal %>MemberService`
 - 文件名与 service 对应：`xxx_service.proto` / `xxx_<子实体>_service.proto`
 - RPC 方法名使用 `PascalCase`，格式为 `实体+动作`：`XxxList`、`XxxCreate`、`XxxGet`、`XxxUpdate`、`XxxDelete`
 - 动作型 RPC 用动词短语：`XxxRetrySync`、`XxxMemberBatchInvite`；子资源用 `Xxx<子资源><动作>`，如 `XxxRegionAssign`
 
+### 5.3 ID 类型 | ID types
+
+- 业务主键用 `string`：便于后续换雪花/UUID 而不破坏协议
+- 数据库自增主键用 `int64`
+- 多租户体系 ID 统一用 `string`：`tenant_id` / `platform_id` / `region_id`
+
+[EN] Business keys are `string` so the ID scheme can change without breaking the contract;
+database auto-increment keys are `int64`; multi-tenant identifiers are always `string`
+
+### 5.4 字段名一旦发布就不要改 | Field names are forever
+
+改字段名等于破坏兼容：JSON 的 key 变了、Java/TS 客户端的属性变了编号（tag number）
+更不能复用，删字段要用 `reserved`
+
+[EN] Renaming a field breaks compatibility: JSON keys and client properties change. Field
+numbers must never be reused — mark removed fields `reserved`
+
 ---
 
-## 6. 公共 Message 抽取
+## 6. 公共类型抽取 | Extracting shared types
 
-### 规则
+| 什么时候抽 \| When | 抽到哪 \| Where |
+| --- | --- |
+| 两个以上模块引用同一实体 | `proto/common/{module}.proto` |
+| 两个以上模块引用同一枚举 | `proto/enums/{module}.proto` |
+| 只有一个模块用 | 留在该模块的服务文件里 |
 
-当多个模块定义了字段结构完全相同的 message 时，必须抽取到 `common` 包统一维护。
+抽取后必须注册到聚合文件，否则别的模块 import 不到：
 
-### 抽取原则
+[EN] After extracting, register it in the aggregation file or other modules cannot see it:
+
+```protobuf
+// proto/common/common.proto
+import public "proto/common/{module}.proto";
+
+// proto/enums/enums.proto
+import public "proto/enums/{module}.proto";
+```
+
+### 6.1 抽取原则与引用 | Principles and references
 
 - 放入 `proto/common/` 目录下语义最匹配的 `.proto` 文件
 - 如果没有合适的文件，可以新建
 - 新文件必须在 `proto/common/common.proto` 中添加 `import public`
 - 公共 message 命名应通用化，不带模块前缀（如 `FieldOption` 而非 `TenantEditableFieldOption`）
 
-### 引用方式
+**引用方式 | How to reference**
 
 ```protobuf
 // 其他模块通过 common 包引用
 repeated common.XxxTypeCapability types = 1;  // 类型列表 | [EN] Type list
 ```
 
-### 不推荐
+**不推荐 | Anti-patterns**
 
 - 在多个模块中重复定义结构相同的 message
 - 仅命名不同但字段完全一致的 message（如 `XxxFieldOption` vs `YyyFieldOption` 字段一样）
 
 ---
 
-## 7. 字段校验标签（@inject_tag: validate）
+## 7. 校验标签 | Validation tags
 
-使用 `@inject_tag` 在 proto 字段上注入 go-argus 校验规则，生成 Go 代码时会自动写入 struct tag
+`@inject_tag` 里的 `validate:"..."` 由 `scripts/inject-tags.sh` 注入成 Go struct tag，
+运行时由 `validation/` 下的 go-argus 校验层执行完整规则速查见本节 7.3
 
-### 7.1 基本格式
+[EN] The `validate:"..."` inside `@inject_tag` is injected into Go struct tags by
+`scripts/inject-tags.sh` and enforced at runtime by the go-argus layer under
+`validation/`. The full rule reference is in 7.3 below
+
+| 场景 \| Case | 写法 \| Tag |
+| --- | --- |
+| 必填字符串 | `validate:"required"` |
+| 带长度约束 | `validate:"required,min=2,max=64"` |
+| 可选且有格式 | `validate:"omitempty,email"` / `omitempty,url` / `omitempty,e164` |
+| 数值区间 | `validate:"gte=0,lte=9999"` |
+| 批量条数上限 | `validate:"required,max=100"` |
+| 枚举字段 | 仅 `validate:"required"`（拒绝 `UNSPECIFIED = 0`）|
+| 项目自有规则 | `validate:"required,tenant_id"`（在 `validation/validator.go` 注册）|
+
+### 7.1 三条铁律 | Three hard rules
+
+1. **只给 Request 加校验**：Response / Info 类消息不加，它们不经过校验层
+   [EN] Only requests carry validation; responses and info messages never pass through it
+2. **枚举禁用 `oneof` 系列**：proto 加了新枚举值时手写列表会悄悄过期
+   [EN] Never use oneof-style rules on enums: a hand-written list goes stale silently
+3. **必填字段漏标就是没有校验**：拦截器对着没 tag 的字段永远返回通过
+   [EN] A required field without the tag is simply unvalidated; the interceptor passes it
+
+### 7.2 基本格式 | Basic form
 
 ```protobuf
   string id = 1;  // ID | [EN] ID @inject_tag: validate:"required"
@@ -268,7 +390,7 @@ repeated common.XxxTypeCapability types = 1;  // 类型列表 | [EN] Type list
 
 **位置**：`@inject_tag` 放在双语注释之后，空一格，不换行。
 
-### 7.2 常用校验规则速查
+### 7.3 常用校验规则速查 | Rule reference
 
 #### 核心规则
 
@@ -366,7 +488,7 @@ repeated common.XxxTypeCapability types = 1;  // 类型列表 | [EN] Type list
 | `boolean` | 布尔值 | `validate:"required,boolean"` |
 | `dive` | 递归校验切片/映射元素 | `validate:"required,dive,required"` |
 
-### 7.3 推荐写法
+### 7.4 推荐写法 | Recommended
 
 ```protobuf
 // 创建请求
@@ -388,7 +510,7 @@ message XxxUpdateRequest {
 }
 ```
 
-### 7.4 不推荐
+### 7.5 不推荐 | Discouraged
 
 ```protobuf
 // validate 标签与注释之间没有空格
@@ -409,7 +531,7 @@ message XxxInfo {
 string value = 1; // 值 | [EN] Value @inject_tag: validate:"required_if=type ADJUST"  ← 不推荐，应为 Type
 ```
 
-### 7.5 校验标签使用原则
+### 7.6 校验标签使用原则 | Principles
 
 | # | 原则 | 说明 |
 |---|------|------|
@@ -423,7 +545,7 @@ string value = 1; // 值 | [EN] Value @inject_tag: validate:"required_if=type AD
 
 ---
 
-## 8. 接口形态与 URL 约定
+## 8. 接口设计 | API design
 
 同一个模块里通常混着三类接口，分清它们是 URL 设计不走偏的前提。
 
@@ -516,39 +638,39 @@ They share the proto package and Go package, and reuse the module's shared entit
 [EN] Once split, the two services must not import each other: lift shared types into
 `common/`, or they are welded back together.
 
+### 8.6 分页 | Pagination
+
+| Pagination
+
+```protobuf
+message XxxListRequest {
+  common.Paging page_request = 1;                // 分页请求 | [EN] Page request @inject_tag: validate:"required"
+  common.Sorting sort = 2;                       // 排序 | [EN] Sorting
+  google.protobuf.StringValue keyword = 3;       // 关键词 | [EN] Keyword
+}
+
+message XxxListResponse {
+  common.Paging page_response = 1;               // 分页响应 | [EN] Page response
+  repeated common.XxxInfo infos = 2;             // 列表 | [EN] List
+}
+```
+
+### 8.7 可选字段用 wrappers | Optional fields use wrappers
+
+更新接口的可选字段必须用 `google.protobuf.*Value`：proto3 的裸标量分不清
+「没传」和「传了零值」，用裸字段会把「不改」误解成「改成空」
+
+[EN] Optional fields on update APIs must use `google.protobuf.*Value`: a bare proto3
+scalar cannot distinguish "absent" from "zero", so "leave unchanged" is read as "set to empty"
+
 ---
 
-## 9. 常见约束清单
-
-| # | 约束 | 说明 |
-|---|------|------|
-| 1 | 每个 message 必须有双语头注释 | `// 中文\n// [EN] English` |
-| 2 | 每个字段必须有双语行尾注释 | `// 中文 \| [EN] English` |
-| 3 | 每个 rpc 方法必须有双语注释 | `// 中文\n// [EN] English` |
-| 4 | swagger summary 必须双语 | `中文 \| English` |
-| 5 | 消息定义区和服务定义区必须有分隔线 | `//===========================  ...  ==========================//` |
-| 6 | 字段注释必须对齐 | 同一 message 内 `//` 对齐 |
-| 7 | `//` 后必须有一个空格 | 禁止 `//注释` |
-| 8 | 公共结构必须抽取到 common | 避免跨模块重复定义 |
-| 9 | import 分组排序 | google → openapiv2 → common → enums → 业务模块 |
-| 10 | 空消息也必须有头注释 | `message EmptyReq {}` 上方也要有注释 |
-| 11 | Request 必填字段必须加 `@inject_tag: validate` | Response / Info 不加 |
-| 12 | `@inject_tag` 放在双语注释之后空一格 | 禁止与注释粘连 |
-| 13 | 条件规则字段名使用 PascalCase | `required_if=Type ADJUST` 而非 `type` |
-| 14 | protobuf 枚举字段禁止使用 `oneof` 系列规则 | 允许值必须由业务方法校验 |
-| 15 | 动作型接口统一 `POST` + 动词短横线路径 | 不是改字段，别塞进 PUT/PATCH（见第 8.2 节）|
-| 16 | 批量接口必须有条数上限且逐条返回结果 | `validate:"required,max=N"` + `common.BatchResult`（见第 8.4 节）|
-| 17 | 子资源的父 ID 只放路径 | 不要同时塞进 body（见第 8.3 节）|
-| 18 | 同模块的两个 service 不得互相 import | 共享类型提到 `common/`（见第 8.5 节）|
-
----
-
-## 10. 完整示例
+## 9. 完整示例 | Worked examples
 
 以下示例直接取自本仓库的真实文件，可以对照着看。
 [EN] The following examples are the repository's real files, so you can read them side by side.
 
-### 10.1 枚举子文件 — `proto/enums/<% .MixedModule %>.proto`
+### 9.1 枚举子文件 — `proto/enums/<% .MixedModule %>.proto`
 
 ```protobuf
 syntax = "proto3";
@@ -570,7 +692,7 @@ enum <% .MixedService | pascal %>Status {
 写完必须在 `proto/enums/enums.proto` 里 `import public`，否则业务模块看不到它。
 [EN] It must be registered with `import public` in `proto/enums/enums.proto` or business modules cannot see it.
 
-### 10.2 公共子文件 — `proto/common/pagination.proto`
+### 9.2 公共子文件 — `proto/common/pagination.proto`
 
 ```protobuf
 syntax = "proto3";
@@ -603,7 +725,7 @@ message Sorting {
 [EN] There is a single `Paging` message; requests and responses distinguish it by field name
 (`page_request` / `page_response`) instead of a second `PagingResponse` type, which would drift.
 
-### 10.3 业务模块 — 混合模块的聚合根（节选）
+### 9.3 业务模块 — 混合模块的聚合根（节选）| Business module: the mixed module aggregate root
 
 ```protobuf
 //===========================  <% .MixedService | pascal %> 消息定义 | Message Definitions  ==========================//
@@ -666,7 +788,7 @@ service <% .MixedService | pascal %>Service {
 
 [EN] See the full files under `proto/<% .MixedModule %>/`.
 
-### 10.4 聚合文件注册 | Registering in the aggregation files
+### 9.4 聚合文件注册 | Registering in the aggregation files
 
 ```protobuf
 // proto/common/common.proto
@@ -678,9 +800,9 @@ import public "proto/enums/<% .MixedModule %>.proto";
 
 ---
 
-## 11. 代码生成流程
+## 10. 代码生成流程 | Code generation
 
-### 11.1 首次准备（只需一次）| One-time setup
+### 10.1 首次准备（只需一次）| One-time setup
 
 ```bash
 bash scripts/setup-all.sh --no-pause     # Linux / macOS
@@ -694,14 +816,14 @@ scripts\setup-all.bat --no-pause         # Windows
 googleapis / grpc-gateway protos. Versions are pinned in the scripts rather than following
 the system protoc, because mixed versions make the pb diff never settle.
 
-### 11.2 生成命令 | Generate
+### 10.2 生成命令 | Generate
 
 ```bash
 bash scripts/generate-modular.sh         # Linux / macOS
 scripts\generate-modular.bat             # Windows
 ```
 
-### 11.3 生成流程 | What it does
+### 10.3 生成流程 | What it does
 
 | 步骤 | 说明 |
 |------|------|
@@ -718,19 +840,7 @@ scripts\generate-modular.bat             # Windows
 [EN] The order matters: `enums` and `common` are depended on by business modules and must
 be generated first.
 
-### 11.4 新增模块必须登记三处 | Three places to register a new module
-
-| # | 位置 | 漏掉的后果 |
-|---|------|-----------|
-| 1 | `scripts/generate-modular.sh` 与 `.bat` 的 `PROTO_SERVICE_MODULES` | 完全不会被生成，CI 也不报错 |
-| 2 | `swagger_embed.go` 的 `//go:embed` 与 `SwaggerFiles` | 文档站拿不到这个服务的 swagger |
-| 3 | `resources/<% .GatewayPrefix %>-dev.yaml` 的 `aggregate.services` | 网关不聚合，接口在文档里不可见 |
-
-第 1 步最常被漏：proto 写完了但脚本没登记，新接口凭空消失。
-[EN] Step 1 is missed most often: the proto exists but the script does not know it, and the
-new endpoints simply never appear.
-
-### 11.5 校验规则在哪执行 | Where the rules run
+### 10.4 校验规则在哪执行 | Where the rules run
 
 `@inject_tag: validate:"..."` 只是把规则写进 struct tag，真正执行它的是 `validation/` 下的
 go-argus 校验层：
@@ -751,7 +861,7 @@ project-specific rules are registered in `validation/validator.go`; and
 `validation/contract_test.go` guards the chain so a broken injection fails a test instead of
 silently passing everything in production.
 
-### 11.6 生成后的文件结构 | Output layout
+### 10.5 生成后的文件结构 | Output layout
 
 ```text
 <% .ProjectName %>/
@@ -765,7 +875,7 @@ silently passing everything in production.
     └── ...
 ```
 
-### 11.7 本地联调 | Local development
+### 10.6 本地联调 | Local development
 
 下游服务想试尚未提交的协议改动时，在下游的 go.mod 里替换成本地路径：
 
@@ -780,7 +890,7 @@ go mod tidy
 联调完记得撤销 replace，不要把它提交进去。
 [EN] Remove the replace before committing.
 
-### 11.8 注意事项 | Gotchas
+### 10.7 注意事项 | Gotchas
 
 | # | 注意 | 说明 |
 |---|------|------|
@@ -790,3 +900,76 @@ go mod tidy
 | 4 | 不要手改 `pb/` | 下次生成会整体覆盖 |
 | 5 | 生成失败先看 import 路径 | proto 之间的 import 必须相对仓库根目录，如 `proto/common/common.proto` |
 | 6 | CI 会自动补齐 pb | `proto/**` 变更合并到 `<% .BaseBranch %>` 后由 `generate-pb.yml` 重新生成并提交 |
+
+---
+
+## 11. 新增模块清单 | New module checklist
+
+1. 复制一个现有模块为 `proto/{module}/`（单 service 抄 `<% .ExampleModule %>/`，多 service 抄 `<% .MixedModule %>/`），重命名服务文件并改掉包名
+2. 新枚举放 `proto/enums/{module}.proto` 并注册到 `enums.proto`
+3. 新公共消息放 `proto/common/{module}.proto` 并注册到 `common.proto`
+4. 把 `{module}` 加到 `scripts/generate-modular.sh` 与 `.bat` 的 `PROTO_SERVICE_MODULES`
+5. 运行 `bash scripts/generate-modular.sh`（含 pb / gateway / swagger / inject-tags）
+6. 在 `swagger_embed.go` 注册新服务的 swagger 文件
+7. 在 `resources/<% .GatewayPrefix %>-dev.yaml` 的 `aggregate.services` 登记，文档站才能看到
+8. `go mod tidy && go build ./... && go test ./...`
+
+漏掉第 4 步最常见：proto 写完了但生成脚本没登记，CI 不会报错，只是新接口凭空消失
+
+[EN] Step 4 is the one most often missed: the proto exists but the generation script does
+not know it, CI stays green, and the new endpoints simply never appear
+
+### 11.1 必须登记的三处 | The three places to register
+
+| # | 位置 | 漏掉的后果 |
+|---|------|-----------|
+| 1 | `scripts/generate-modular.sh` 与 `.bat` 的 `PROTO_SERVICE_MODULES` | 完全不会被生成，CI 也不报错 |
+| 2 | `swagger_embed.go` 的 `//go:embed` 与 `SwaggerFiles` | 文档站拿不到这个服务的 swagger |
+| 3 | `resources/<% .GatewayPrefix %>-dev.yaml` 的 `aggregate.services` | 网关不聚合，接口在文档里不可见 |
+
+第 1 步最常被漏：proto 写完了但脚本没登记，新接口凭空消失。
+[EN] Step 1 is missed most often: the proto exists but the script does not know it, and the
+new endpoints simply never appear.
+
+---
+
+## 12. 约束清单与禁止事项 | Checklist and anti-patterns
+
+### 12.1 逐条约束 | Itemised checklist
+
+| # | 约束 | 说明 |
+|---|------|------|
+| 1 | 每个 message 必须有双语头注释 | `// 中文\n// [EN] English` |
+| 2 | 每个字段必须有双语行尾注释 | `// 中文 \| [EN] English` |
+| 3 | 每个 rpc 方法必须有双语注释 | `// 中文\n// [EN] English` |
+| 4 | swagger summary 必须双语 | `中文 \| English` |
+| 5 | 消息定义区和服务定义区必须有分隔线 | `//===========================  ...  ==========================//` |
+| 6 | 字段注释必须对齐 | 同一 message 内 `//` 对齐 |
+| 7 | `//` 后必须有一个空格 | 禁止 `//注释` |
+| 8 | 公共结构必须抽取到 common | 避免跨模块重复定义 |
+| 9 | import 分组排序 | google → openapiv2 → common → enums → 业务模块 |
+| 10 | 空消息也必须有头注释 | `message EmptyReq {}` 上方也要有注释 |
+| 11 | Request 必填字段必须加 `@inject_tag: validate` | Response / Info 不加 |
+| 12 | `@inject_tag` 放在双语注释之后空一格 | 禁止与注释粘连 |
+| 13 | 条件规则字段名使用 PascalCase | `required_if=Type ADJUST` 而非 `type` |
+| 14 | protobuf 枚举字段禁止使用 `oneof` 系列规则 | 允许值必须由业务方法校验 |
+| 15 | 动作型接口统一 `POST` + 动词短横线路径 | 不是改字段，别塞进 PUT/PATCH（见第 8.2 节）|
+| 16 | 批量接口必须有条数上限且逐条返回结果 | `validate:"required,max=N"` + `common.BatchResult`（见第 8.4 节）|
+| 17 | 子资源的父 ID 只放路径 | 不要同时塞进 body（见第 8.3 节）|
+| 18 | 同模块的两个 service 不得互相 import | 共享类型提到 `common/`（见第 8.5 节）|
+
+### 12.2 禁止事项 | Anti-patterns
+
+| ❌ 禁止 \| Forbidden | ✅ 正确 \| Correct |
+| --- | --- |
+| 单语注释 | 双语注释 `中文 \| [EN] English` |
+| 缺少分节标题 | 消息定义区与服务定义区都要有 |
+| 必填字段漏 `@inject_tag: validate:"required"` | 必填字段必须标注 |
+| 在 `proto/common/` 之外重复定义公共消息 | 抽取到 `common/` 并注册 |
+| 在业务服务文件里定义枚举 | 放 `proto/enums/` 并注册 |
+| 枚举字段用 `oneof=` 系列规则 | 只用 `required` |
+| 更新接口用裸标量表示可选 | 用 `google.protobuf.*Value` |
+| 带 body 的 `DELETE` | 批量操作用 `POST` |
+| 复用已删除字段的编号 | 用 `reserved` 占位 |
+| 多租户 ID 用 `int64` | `tenant_id` 等统一 `string` |
+| 手改 `pb/` 下的生成代码 | 改 proto 后重新生成 |

@@ -1,7 +1,6 @@
 # proto 目录规范 | Proto directory conventions
 
-完整风格指南见 [`.vscode/skills/<% .OrgPrefix %>-proto-style/SKILL.md`](../.vscode/skills/<% .OrgPrefix %>-proto-style/SKILL.md)，
-校验规则速查见 [`.trae/skills/proto-conventions/SKILL.md`](../.trae/skills/proto-conventions/SKILL.md)
+完整规范（含校验规则速查）见 [`<% .AiAssistant %>/skills/<% .OrgPrefix %>-proto-style/SKILL.md`](../<% .AiAssistant %>/skills/<% .OrgPrefix %>-proto-style/SKILL.md)
 本文件只讲目录分工。
 
 [EN] The full style guide and the validation rule reference live in the files linked above;

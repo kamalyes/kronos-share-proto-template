@@ -18,8 +18,7 @@
 - [🏠 Repository](https://github.com/<% .OrgName %>/<% .ProjectName %>)
 - [⚙️ Code generation guide](./API_GENERATE.md)
 - [📐 Proto directory conventions](./proto/CONVENTIONS.md)
-- [🎨 Proto style guide](./.vscode/skills/<% .OrgPrefix %>-proto-style/SKILL.md)
-- [✅ Validation rule reference](./.trae/skills/proto-conventions/SKILL.md)
+- [🎨 Proto conventions, including the validation rule reference](./<% .AiAssistant %>/skills/<% .OrgPrefix %>-proto-style/SKILL.md)
 - [👷 CI/CD pipeline guide](./.github/workflows/GUIDE.md)
 - [🌏 中文说明](./README.md)
 

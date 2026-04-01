@@ -18,8 +18,7 @@
 - [🏠 仓库主页](https://github.com/<% .OrgName %>/<% .ProjectName %>)
 - [⚙️ 代码生成说明](./API_GENERATE.md)
 - [📐 Proto 目录规范](./proto/CONVENTIONS.md)
-- [🎨 Proto 风格指南](./.vscode/skills/<% .OrgPrefix %>-proto-style/SKILL.md)
-- [✅ 校验规则速查](./.trae/skills/proto-conventions/SKILL.md)
+- [🎨 Proto 规范（含校验规则速查）](./<% .AiAssistant %>/skills/<% .OrgPrefix %>-proto-style/SKILL.md)
 - [👷 CI/CD 流水线说明](./.github/workflows/GUIDE.md)
 - [🌍 English README](./README.en.md)
 

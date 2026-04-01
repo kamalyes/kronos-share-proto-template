@@ -87,6 +87,31 @@ questions:
     default: "master"
 
   # --------------------------------------------------------------------------
+  # AI 协作工具 | AI coding assistant
+  #
+  # proto 规范与 commit 规范在模板里只有一份正文（__ai_home__/），渲染时按这里的
+  # 选择落到对应工具的目录。各家读取位置不同：Trae 读 .trae/，Claude Code 读
+  # .claude/，Cursor 读 .cursor/，VS Code 系扩展读 .vscode/。
+  #
+  # 为什么用「目录名」而不是「选哪些、删哪些」：kopy 的 ignore 匹配的是未渲染的
+  # rename 值，`value: "<% if ... %>__skip__<% end %>"` 渲染后虽然是 __skip__，
+  # ignore 也不会命中（已实测），所以条件性删目录这条路在当前版本不存在。
+  # 换工具时改目录名即可，不必重新渲染模板。
+  #
+  # [EN] The proto and commit conventions exist once in the template, under __ai_home__/,
+  # and land in the directory the chosen assistant reads: Trae reads .trae/, Claude Code
+  # .claude/, Cursor .cursor/, VS Code extensions .vscode/. The choice is expressed as a
+  # directory NAME rather than as "which trees to keep", because kopy matches `ignore`
+  # against the UNRENDERED rename value: a templated value that renders to a skip marker is
+  # still emitted (verified). Renaming the directory later is enough; no re-render needed.
+  # --------------------------------------------------------------------------
+  - name: AiAssistant
+    prompt: "AI 协作工具目录（proto 规范与 commit 规范落到哪）| Directory of the AI coding assistant that reads the conventions"
+    type: select
+    choices: [".trae", ".claude", ".cursor", ".vscode"]
+    default: ".trae"
+
+  # --------------------------------------------------------------------------
   # Proto 命名空间 | Proto namespaces
   #
   # 这三个值决定生成代码的落点，定下来后改动成本很高（下游服务的 import 路径会变）。
@@ -268,6 +293,8 @@ rename:
     value: "<% .ExampleModule %>"
   - pattern: "__service__"
     value: "<% .ExampleService | snake %>"
+  - pattern: "__ai_home__"
+    value: "<% .AiAssistant %>"
   - pattern: "__project_name__"
     value: "<% .ProjectName %>"
   - pattern: "__org_prefix__"
