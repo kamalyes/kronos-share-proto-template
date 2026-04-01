@@ -19,6 +19,7 @@
 - [⚙️ 代码生成说明](./API_GENERATE.md)
 - [📐 Proto 目录规范](./proto/CONVENTIONS.md)
 - [🎨 Proto 规范（含校验规则速查）](./<% .AiAssistant %>/skills/<% .OrgPrefix %>-proto-style/SKILL.md)
+- [🔍 规范巡检](./<% .AiAssistant %>/skills/proto-lint-governance/SKILL.md) ｜ [🏗️ 新模块落地](./<% .AiAssistant %>/skills/proto-new-module-bootstrap/SKILL.md) ｜ [🔗 网关一致性核对](./<% .AiAssistant %>/skills/gateway-swagger-consistency-check/SKILL.md)
 - [👷 CI/CD 流水线说明](./.github/workflows/GUIDE.md)
 - [🌍 English README](./README.en.md)
 

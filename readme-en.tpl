@@ -19,6 +19,7 @@
 - [⚙️ Code generation guide](./API_GENERATE.md)
 - [📐 Proto directory conventions](./proto/CONVENTIONS.md)
 - [🎨 Proto conventions, including the validation rule reference](./<% .AiAssistant %>/skills/<% .OrgPrefix %>-proto-style/SKILL.md)
+- [🔍 Convention audit](./<% .AiAssistant %>/skills/proto-lint-governance/SKILL.md) ｜ [🏗️ New module bootstrap](./<% .AiAssistant %>/skills/proto-new-module-bootstrap/SKILL.md) ｜ [🔗 Gateway consistency check](./<% .AiAssistant %>/skills/gateway-swagger-consistency-check/SKILL.md)
 - [👷 CI/CD pipeline guide](./.github/workflows/GUIDE.md)
 - [🌏 中文说明](./README.md)
 

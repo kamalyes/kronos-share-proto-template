@@ -21,6 +21,7 @@
 - [🌍 生成项目的英文说明](./readme-en.tpl)（渲染后成为 `README.en.md`）
 - [⚙️ 生成链路说明](./api-generate.tpl)（渲染后成为 `API_GENERATE.md`）
 - [🎨 Proto 规范（含校验规则速查）](./__ai_home__/skills/__org_prefix__-proto-style/SKILL.md)
+- [🔍 规范巡检](./__ai_home__/skills/proto-lint-governance/SKILL.md) ｜ [🏗️ 新模块落地](./__ai_home__/skills/proto-new-module-bootstrap/SKILL.md) ｜ [🔗 网关一致性核对](./__ai_home__/skills/gateway-swagger-consistency-check/SKILL.md)
 
 ## 🚀 为什么需要这个模板 | Why
 
@@ -182,11 +183,15 @@ kronos-share-proto-template/
 │   │                               # 带 .tpl 是为了不让 GitHub 解析模板仓库自己的工作流
 │   ├── workflows/GUIDE.md          # 流水线详解
 │   ├── PIPELINE_CONFIG.md          # 需要配置的 vars / secrets
-│   ├── copilot-instructions.md     # commit message 规范
-│   └── skills/                     # 3 份 AI 协作规范
+│   └── copilot-instructions.md     # 指向 commit 规范正文（Copilot 只读这个固定路径）
 ├── __ai_home__/                    # AI 规范唯一正文，渲染时改名成 .trae / .claude / .cursor / .vscode
-│   ├── rules/git-commit-message.md # commit 规范（唯一一份）
-│   └── skills/__org_prefix__-proto-style/SKILL.md   # proto 规范（唯一一份，975 行）
+│   ├── rules/
+│   │   └── git-commit-message.md   # commit 规范（唯一一份）
+│   └── skills/
+│       ├── __org_prefix__-proto-style/            # proto 规范（唯一一份，975 行）
+│       ├── proto-lint-governance/                 # 规范巡检
+│       ├── proto-new-module-bootstrap/            # 新模块落地清单
+│       └── gateway-swagger-consistency-check/     # 网关与 swagger 一致性核对
 └── .vscode/                        # 编辑器配置（settings / extensions / launch）
 ```
 
@@ -322,7 +327,7 @@ and the TypeScript SDK follow automatically.
 | 不要文档网关 | 删 `bootstrap/`、`resources/`、`swagger_embed*.go` 与对应依赖 |
 | 不要 CI | 删 `.github/workflows/` |
 | 换 AI 工具目录 | 渲染时选 `AiAssistant`（`.trae` / `.claude` / `.cursor` / `.vscode`），或生成后直接改目录名 |
-| 不要 AI 规范文件 | 删 `__ai_home__/`（渲染后即所选目录）与 `.github/skills/` |
+| 不要 AI 规范文件 | 删 `__ai_home__/`（渲染后即所选目录） |
 
 ## ✅ 已验证 | Verified
 
