@@ -110,8 +110,20 @@ clone and build without installing protoc.
 
 ### First run
 
-The order is not interchangeable: while `pb/` is empty, `go mod tidy` cannot resolve
-`<% .ModuleName %>/pb/...`
+One command, with the script enforcing the order:
+
+```bash
+bash scripts/init.sh                     # Linux / macOS
+scripts\init.bat                         # Windows
+```
+
+It does four things in turn: install the pinned toolchain, generate pb/gateway/swagger and
+inject struct tags, run `go mod tidy`, then `go build ./... && go test ./...`. It is
+idempotent. Pass `--skip-setup` when the toolchain is already in place, or `--skip-test` to
+skip the tests.
+
+<details>
+<summary>The equivalent manual steps, and why the order matters</summary>
 
 ```bash
 bash scripts/setup-all.sh --no-pause     # install protoc + 5 plugins + googleapis
@@ -121,7 +133,12 @@ go build ./... && go test ./...
 git add -A && git commit -m "chore: bootstrap share proto"
 ```
 
-On Windows replace `.sh` with `.bat` and run them from `cmd` or PowerShell.
+Running `go mod tidy` first fails: while `pb/` is empty, Go tries to resolve
+`<% .ModuleName %>/pb/<module>` as a **remote module** (only the test files under
+`validation/` import them) and reports a wall of `Repository not found`, which looks like a
+repository or network problem when it merely means the code has not been generated yet.
+
+</details>
 
 ### Run the docs gateway
 

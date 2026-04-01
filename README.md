@@ -37,7 +37,7 @@ how a newcomer learns what a comment should look like
 ### ⚡ 模板提供什么 | What you get
 
 - **🧱 三个示例模块**: 两个单 service 的完整 CRUD（POST/GET/列表/PUT/PATCH/DELETE/批量）、一个混合模块（一模块两个 service + 动作型 + 子资源）
-- **⚙️ 完整生成链路**: 16 个脚本（.sh/.bat 双版本），protoc 24.3 与 5 个插件版本固定可复现
+- **⚙️ 完整生成链路**: 18 个脚本（.sh/.bat 双版本），`init.sh` 一条命令打通，protoc 24.3 与 5 个插件版本固定可复现
 - **🏷️ 校验写进契约**: proto 注释里的 `@inject_tag: validate:"..."` 注入成 struct tag，运行时由 go-argus 执行
 - **🔌 现成的校验拦截器**: gRPC 一元拦截器 + i18n 错误消息 + IP 白名单，新增 RPC 自动覆盖
 - **🧪 守链路的契约测试**: 专门验证「@inject_tag 真的变成了 struct tag」，这条链路断了不会有任何报错
@@ -108,15 +108,13 @@ kopy list ./kronos-share-proto-template
 
 ```bash
 cd demo-share-proto
-bash scripts/setup-all.sh --no-pause     # 装 protoc 24.3 + 5 个插件 + googleapis
-bash scripts/generate-modular.sh         # 生成 pb / gateway / swagger 并注入 tag
-go mod tidy                              # 必须在 generate 之后
-go build ./... && go test ./...
-go run ./bootstrap                        # 文档站 http://127.0.0.1:18080/swagger
+bash scripts/init.sh                     # 装工具链 → 生成 pb/gateway/swagger → tidy → build/test
+go run ./bootstrap                       # 文档站 http://127.0.0.1:18080/swagger
 ```
 
-> ⚠️ 顺序不能换：`pb/` 为空时 `go mod tidy` 解析不到 `<module>/pb/...`
-> 这不是模板缺陷，而是协议仓库的固有顺序（CI 也是这么跑的）。
+> ⚠️ 别先跑 `go mod tidy`：`pb/` 为空时 Go 会把 `<module>/pb/<module>` 当成**远程模块**
+> 去拉（只有 `validation/` 的测试文件 import 它们），报一串 `Repository not found`，
+> 看着像仓库或网络问题，其实只是还没生成。`init.sh` 的存在就是为了不必记这个顺序。
 >
 > [EN] The order is fixed: while `pb/` is empty, `go mod tidy` cannot resolve `<module>/pb/...`.
 > Not a template defect but the inherent order of a contract repository, and CI does the same.
@@ -173,7 +171,7 @@ kronos-share-proto-template/
 │   └── openapi/bundle.proto        # 聚合文档的元信息：标题 / 鉴权 / 分组说明
 ├── docs/downstream-proto-sync.yml  # 下游 Go 服务的协议同步工作流（给生成项目复制去用）
 ├── validation/                     # go-argus 校验层 + 拦截器 + 契约测试
-├── scripts/                        # 16 个生成/环境脚本（.sh + .bat）
+├── scripts/                        # 18 个生成/环境脚本（.sh + .bat），init.* 一条命令打通
 ├── resources/__gateway_prefix__-dev.yaml  # 网关与 swagger 聚合配置
 ├── bootstrap/                      # 文档网关启动器
 ├── swagger_embed.go / _stub.go     # swagger 嵌入（build tag 分流）
@@ -252,7 +250,7 @@ docs are deliberately not named README.md to dodge rule 1's substring match.
 
 ## 🔄 从生产项目同步脚本 | Syncing scripts from a real project
 
-`scripts/` 下的 16 个脚本与 `.github/`、`.vscode/`、`__ai_home__/` 的规范文件都是从生产仓库
+`scripts/` 下的 18 个脚本与 `.github/`、`.vscode/`、`__ai_home__/` 的规范文件都是从生产仓库
 同步来的，项目专属的部分只有这么几处，升级时照着替换即可：
 
 [EN] The 16 scripts and the convention files are synced from a production repository. Only

@@ -331,6 +331,13 @@ rename:
 # ============================================================================
 hooks:
   after:
-    - go mod tidy
-    - bash scripts/setup-all.sh --no-pause
-    - bash scripts/generate-modular.sh
+    # 一条命令打通：装工具链 → 生成 pb/gateway/swagger → go mod tidy → build/test。
+    # 原先这里是「go mod tidy → setup-all → generate-modular」，顺序是反的：
+    # pb/ 为空时 go mod tidy 会把 <% .ModuleName %>/pb/<module> 当成远程模块解析
+    # （只有 validation 的测试文件 import 它们），报一串 "Repository not found"。
+    # 等 kopy 支持 hooks 后这一行即可自动完成全部初始化。
+    #
+    # [EN] A single command: toolchain, codegen, go mod tidy, build and test. The previous
+    # order ran `go mod tidy` first, which fails while pb/ is empty because Go then tries to
+    # resolve <module>/pb/<module> as a REMOTE module and reports "Repository not found".
+    - bash scripts/init.sh

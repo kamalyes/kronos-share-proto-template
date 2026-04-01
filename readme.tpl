@@ -109,7 +109,19 @@ review 的 diff 出现在 PR 里；任何人 clone 下来不装 protoc 也能编
 
 ### 首次初始化
 
-顺序不能换：`pb/` 为空时 `go mod tidy` 解析不到 `<% .ModuleName %>/pb/...`
+一条命令打通，顺序由脚本保证：
+
+```bash
+bash scripts/init.sh                     # Linux / macOS
+scripts\init.bat                         # Windows
+```
+
+它依次做四件事：装固定版本工具链 → 生成 pb/gateway/swagger 并注入 tag →
+`go mod tidy` → `go build ./... && go test ./...`。幂等，重复执行无副作用。
+工具链已就位可加 `--skip-setup`，想跳过测试可加 `--skip-test`。
+
+<details>
+<summary>等价的手工步骤，以及为什么顺序不能换</summary>
 
 ```bash
 bash scripts/setup-all.sh --no-pause     # 安装 protoc + 5 个插件 + googleapis
@@ -119,7 +131,11 @@ go build ./... && go test ./...
 git add -A && git commit -m "chore: bootstrap share proto"
 ```
 
-Windows：把上面的 `.sh` 换成 `.bat`，用 `cmd` 或 `PowerShell` 执行。
+先 `go mod tidy` 会失败：`pb/` 为空时 Go 把 `<% .ModuleName %>/pb/<module>` 当成
+**远程模块**去拉（只有 `validation/` 的测试文件 import 它们），于是报一串
+`Repository not found`，看起来像仓库或网络问题，其实只是还没生成。
+
+</details>
 
 ### 启动文档网关
 
