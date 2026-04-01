@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option go_package = "<% .ModuleName %>/pb/common";
+option java_package = "<% .JavaPackage %>.common";
+package <% .ProtoPackage %>.common;
+
+// 多语言文本条目。
+// [EN] One localized text entry
+//
+// 用于「同一个字段要按语言给出不同取值」的场景，比如商品名、租户显示名。
+// 存库侧把 repeated LocalizedText 整体序列化成一列（见服务模板 models/base.go
+// 的 LocalizedTextList，它实现了 GORM 的 Valuer/Scanner），
+// 而不是为每种语言各开一列——语言是会增加的，列不该跟着加。
+//
+// [EN] For fields whose value differs per language, such as a product or tenant display
+// name. The storage side serializes the whole repeated field into a single column (see
+// LocalizedTextList in the service template's models/base.go, which implements GORM's
+// Valuer/Scanner) rather than adding one column per language: languages get added over
+// time and the schema should not follow.
+//
+// key 用 BCP 47 语言标签（zh / en / zh-TW），与 Accept-Language 对齐，
+// 这样网关拿到的请求语言可以直接用来挑选条目。
+// [EN] key is a BCP 47 language tag (zh / en / zh-TW), matching Accept-Language, so the
+// request language the gateway resolves can select an entry directly.
+message LocalizedText {
+  string key = 1;           // 语言标签 | [EN] Language tag @inject_tag: validate:"required,bcp47"
+  string value = 2;         // 该语言下的文本 | [EN] Text in that language @inject_tag: validate:"required"
+}

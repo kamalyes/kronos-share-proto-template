@@ -24,6 +24,10 @@ import public "proto/common/empty.proto";
 // [EN] Pagination and sorting
 import public "proto/common/pagination.proto";
 
+// 多语言文本。
+// [EN] Localized text
+import public "proto/common/i18n.proto";
+
 // <% .ExampleModule %> 模块实体。
 // [EN] <% .ExampleModule %> module entities
 import public "proto/common/<% .ExampleModule %>.proto";
