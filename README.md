@@ -20,8 +20,7 @@
 - [📦 生成项目的中文说明](./readme.tpl)（渲染后成为 `README.md`）
 - [🌍 生成项目的英文说明](./readme-en.tpl)（渲染后成为 `README.en.md`）
 - [⚙️ 生成链路说明](./api-generate.tpl)（渲染后成为 `API_GENERATE.md`）
-- [🎨 Proto 风格指南](./.vscode/skills/__org_prefix__-proto-style/SKILL.md)
-- [✅ 校验规则速查](./.trae/skills/proto-conventions/SKILL.md)
+- [🎨 Proto 规范（含校验规则速查）](./__ai_home__/skills/__org_prefix__-proto-style/SKILL.md)
 
 ## 🚀 为什么需要这个模板 | Why
 
@@ -185,8 +184,10 @@ kronos-share-proto-template/
 │   ├── PIPELINE_CONFIG.md          # 需要配置的 vars / secrets
 │   ├── copilot-instructions.md     # commit message 规范
 │   └── skills/                     # 3 份 AI 协作规范
-├── .trae/                          # proto 规范 + commit 规范
-└── .vscode/                        # 编辑器配置 + proto 风格指南 SKILL
+├── __ai_home__/                    # AI 规范唯一正文，渲染时改名成 .trae / .claude / .cursor / .vscode
+│   ├── rules/git-commit-message.md # commit 规范（唯一一份）
+│   └── skills/__org_prefix__-proto-style/SKILL.md   # proto 规范（唯一一份，975 行）
+└── .vscode/                        # 编辑器配置（settings / extensions / launch）
 ```
 
 ## 🧠 模板渲染机制 | How rendering works
@@ -246,7 +247,7 @@ docs are deliberately not named README.md to dodge rule 1's substring match.
 
 ## 🔄 从生产项目同步脚本 | Syncing scripts from a real project
 
-`scripts/` 下的 16 个脚本与 `.github/`、`.vscode/`、`.trae/` 的规范文件都是从生产仓库
+`scripts/` 下的 16 个脚本与 `.github/`、`.vscode/`、`__ai_home__/` 的规范文件都是从生产仓库
 同步来的，项目专属的部分只有这么几处，升级时照着替换即可：
 
 [EN] The 16 scripts and the convention files are synced from a production repository. Only
@@ -320,7 +321,8 @@ and the TypeScript SDK follow automatically.
 | 换校验库 | `validation/` 整个替换（proto 侧的 `@inject_tag` 语法不用动）|
 | 不要文档网关 | 删 `bootstrap/`、`resources/`、`swagger_embed*.go` 与对应依赖 |
 | 不要 CI | 删 `.github/workflows/` |
-| 不要 AI 规范文件 | 删 `.trae/`、`.github/skills/`、`.vscode/skills/` |
+| 换 AI 工具目录 | 渲染时选 `AiAssistant`（`.trae` / `.claude` / `.cursor` / `.vscode`），或生成后直接改目录名 |
+| 不要 AI 规范文件 | 删 `__ai_home__/`（渲染后即所选目录）与 `.github/skills/` |
 
 ## ✅ 已验证 | Verified
 
