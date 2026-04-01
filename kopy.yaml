@@ -34,6 +34,23 @@ delimiters:
   - "<%"
   - "%>"
 
+# ----------------------------------------------------------------------------
+# ⚠️ 默认值必须是字面量，不能引用别的变量 | Defaults must be literals
+#
+# kopy 渲染 default 时变量上下文是空的，且那个引擎里没有过滤器，实测：
+#   default: "<% .A %>-suffix"          A 已赋值 zzz，仍渲染成  <no value>-suffix
+#   default: "<% .A | upper %>-filtered" 原文照搬进答案，再写进每个生成文件
+# 所以下面 ProjectName / ModuleName / ProtoPackage / JavaPackage / GatewayPrefix
+# 的默认值都写死成与 OrgName=kamalyes、OrgPrefix=demo 自洽的一套。
+# 改 OrgName 或 OrgPrefix 时这五个要一起改，不会自动跟着变。
+#
+# [EN] kopy renders each default with an EMPTY variable context, and that engine has no
+# filters: a default referencing another variable yields "<no value>", and one using a
+# filter leaks its raw text into the answer and then into every generated file (both
+# verified). So the five derived defaults below are hardcoded to a set consistent with
+# OrgName=kamalyes and OrgPrefix=demo, and must be changed together with them.
+# ----------------------------------------------------------------------------
+
 questions:
   # --------------------------------------------------------------------------
   # 项目身份 | Project identity
@@ -53,13 +70,13 @@ questions:
   - name: ProjectName
     prompt: "项目名称（仓库名 / 目录名）| Repository and directory name"
     type: string
-    default: "<% .OrgPrefix %>-share-proto"
+    default: "demo-share-proto"
     required: true
 
   - name: ModuleName
     prompt: "Go 模块路径 | Go module path"
     type: string
-    default: "github.com/<% .OrgName %>/<% .ProjectName %>"
+    default: "github.com/kamalyes/demo-share-proto"
     required: true
 
   - name: GoVersion
@@ -121,13 +138,13 @@ questions:
   - name: ProtoPackage
     prompt: "Proto 包名前缀（如 demo.api，模块名会追加在后面）| Proto package prefix, the module name is appended"
     type: string
-    default: "<% .OrgPrefix %>.api"
+    default: "demo.api"
     required: true
 
   - name: JavaPackage
     prompt: "Java 包名前缀（供 Java 客户端使用）| Java package prefix for Java clients"
     type: string
-    default: "com.<% .OrgName | lower %>.<% .OrgPrefix %>.api"
+    default: "com.kamalyes.demo.api"
     required: true
 
   # --------------------------------------------------------------------------
@@ -187,7 +204,7 @@ questions:
   - name: GatewayPrefix
     prompt: "网关配置前缀（决定 resources/<prefix>-<env>.yaml 的文件名）| Gateway config prefix, names resources/<prefix>-<env>.yaml"
     type: string
-    default: "gateway-<% .OrgPrefix %>"
+    default: "gateway-demo"
     required: true
 
   - name: HTTPPort
