@@ -25,7 +25,7 @@ user-invocable: true
 
 ## 默认证据文件
 
-- [resources/gateway-dev.yaml](../../../resources/gateway-dev.yaml)
+- [resources/<% .GatewayPrefix %>-dev.yaml](../../../resources/<% .GatewayPrefix %>-dev.yaml)
 - [swagger_embed.go](../../../swagger_embed.go)
 - [proto](../../../proto)
 - [pb](../../../pb)

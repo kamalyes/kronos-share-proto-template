@@ -59,7 +59,7 @@ user-invocable: true
 - [proto/enums/enums.proto](../../../proto/enums/enums.proto)
 - [proto/access_control/access_control_service.proto](../../../proto/access_control/access_control_service.proto)
 - [proto/health/health_service.proto](../../../proto/health/health_service.proto)
-- [resources/gateway-dev.yaml](../../../resources/gateway-dev.yaml)
+- [resources/<% .GatewayPrefix %>-dev.yaml](../../../resources/<% .GatewayPrefix %>-dev.yaml)
 - [swagger_embed.go](../../../swagger_embed.go)
 - [scripts/generate-modular.sh](../../../scripts/generate-modular.sh)
 - [scripts/generate-modular.bat](../../../scripts/generate-modular.bat)
@@ -194,7 +194,7 @@ enum StatusCode {
 ## 回归验证建议
 
 1. 重新执行生成脚本并确认 pb/swagger 产物齐全
-2. 检查 [resources/gateway-dev.yaml](../../../resources/gateway-dev.yaml) 聚合页面是否可见目标服务
+2. 检查 [resources/<% .GatewayPrefix %>-dev.yaml](../../../resources/<% .GatewayPrefix %>-dev.yaml) 聚合页面是否可见目标服务
 3. 检查 [swagger_embed.go](../../../swagger_embed.go) 的 `GetSwaggerFile` 是否能读取目标 swagger
 4. 若存在 documents，校验文档只含白名单路径
 

@@ -135,7 +135,7 @@ service <ServiceName> {
 
 ### 第 4 步：接入 gateway 服务聚合
 
-更新 [resources/gateway-dev.yaml](../../../resources/gateway-dev.yaml) 的 `aggregate.services`
+更新 [resources/<% .GatewayPrefix %>-dev.yaml](../../../resources/<% .GatewayPrefix %>-dev.yaml) 的 `aggregate.services`
 
 模板：
 
