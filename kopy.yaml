@@ -212,6 +212,18 @@ questions:
     choices: ["zh", "en", "zh-TW", "ja", "ko", "fr", "de", "es", "ru"]
     default: "zh"
 
+  # key 模块是具体能力而不是占位示例，所以用开关控制。
+  # 默认开：kronos-service-template 的 ID 号段分发依赖它，
+  # kronos-key-service-template 实现的就是这个模块。
+  #
+  # [EN] The key module is a concrete capability rather than a placeholder example, hence the
+  # toggle. On by default because the service template's id block allocation depends on it and
+  # the key-service template implements it.
+  - name: IncludeKeyModule
+    prompt: "是否生成 key 模块（临时 RSA 密钥 + ID 号段分发）| Generate the key module: temporary RSA keys and id block allocation"
+    type: bool
+    default: "true"
+
   - name: PipelineRepo
     prompt: "复用型工作流仓库（PR 通知与代码质量检查复用它；不用 CI 可删 .github/workflows）| Reusable-workflow repository used by the notify and code-quality jobs"
     type: string
@@ -254,6 +266,14 @@ ignore:
   - ".git/"
   - ".git/**"
   - ".DS_Store"
+  # key 模块：关掉则整组不生成，避免留下没被 enums.proto / 脚本引用的孤立文件
+  # [EN] The key module is excluded as a group, so nothing is left unreferenced by enums.proto
+  # or the generation scripts
+  - '<% if ne .IncludeKeyModule "true" %>proto/key/<% end %>'
+  - '<% if ne .IncludeKeyModule "true" %>proto/key/**<% end %>'
+  - '<% if ne .IncludeKeyModule "true" %>proto/key/temp_key_service.proto<% end %>'
+  - '<% if ne .IncludeKeyModule "true" %>proto/key/id_block_service.proto<% end %>'
+  - '<% if ne .IncludeKeyModule "true" %>proto/enums/key.proto<% end %>'
 
 # ============================================================================
 # 重命名规则 | Rename rules

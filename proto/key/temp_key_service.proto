@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "proto/common/common.proto";
+import "proto/enums/enums.proto";
+
+option go_package = "<% .ModuleName %>/pb/key";
+option java_package = "<% .JavaPackage %>.key";
+package <% .ProtoPackage %>.key;
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "<% .OrgPrefix | pascal %> Temp Key Service"
+    description: "临时 RSA 密钥服务：按租户 + 场景签发一次性密钥对，公钥下发给调用方加密敏感字段，私钥仅留在服务端并随 TTL 自动过期 | Temporary RSA key service: issues a per-tenant, per-scenario key pair, hands the public key to the caller for encrypting sensitive fields, and keeps the private key server-side under a TTL"
+    version: "1.0.0"
+  }
+  tags: [
+    {
+      name: "TempKeyManagement"
+      description: "临时密钥管理 | Temporary Key Management"
+    }
+  ]
+};
+
+//===========================  设计约束 | Design Constraints  ==========================//
+//
+// 一、私钥永不出现在任何消息里
+//
+// 整个协议只有 public_key_pem 这一个密钥字段。私钥由服务端生成后直接写入带 TTL 的
+// 存储，之后只能通过 TempKeyDecrypt 间接使用——调用方把密文送进来，拿回明文，
+// 全程接触不到私钥本身。
+//
+// 这条约束是这个服务存在的理由：如果私钥可以下发，调用方就得自己保管密钥，
+// 而「客户端保管私钥」等于没有保管。所以协议层面就不给这个字段留位置，
+// 不是靠约定不要用。
+//
+// 二、租户不出现在请求里
+//
+// 所有请求都没有 tenant_id 字段。租户从网关解析出的请求上下文取，
+// 请求体里的 tenant_id 是调用方可控的，拿它做隔离等于没有隔离。
+//
+// 三、场景是每个操作的必填项
+//
+// 签发、解密、销毁都要带 scenario，且必须与签发时一致。详见 enums.KeyScenario。
+//
+// [EN] First, the private key never appears in any message: the protocol has a single key
+// field, public_key_pem. The service writes the private key into TTL-bounded storage and it is
+// only ever used indirectly through TempKeyDecrypt, where the caller submits ciphertext and
+// receives plaintext without touching the key. That constraint is the reason this service
+// exists: handing the private key out would make the caller responsible for storing it, and a
+// private key stored on a client is not stored at all, so the protocol leaves no field for it
+// rather than relying on a convention. Second, no request carries a tenant id: the tenant comes
+// from the gateway-resolved request context, since a tenant id in the body is controlled by the
+// caller and isolating on it is no isolation. Third, the scenario is mandatory on every
+// operation and must match the one used at issue time.
+
+//===========================  TempKey 消息定义 | TempKey Message Definitions  ==========================//
+
+// 签发临时密钥请求。
+// [EN] Issue temporary key request
+message TempKeyIssueRequest {
+  enums.KeyScenario scenario = 1;    // 使用场景（必填，决定密钥用途）| [EN] Usage scenario, required @inject_tag: validate:"required"
+  enums.RsaKeySize key_size = 2;     // 密钥长度（不填由服务端取默认）| [EN] Key size, defaulted by the service when unset
+}
+
+// 签发临时密钥响应。
+// [EN] Issue temporary key response
+message TempKeyIssueResponse {
+  string key_id = 1;                 // 密钥ID（后续解密/销毁凭此定位）| [EN] Key id used to locate the key later
+  string public_key_pem = 2;         // PEM 格式公钥 | [EN] Public key in PEM format
+  int64 expires_at = 3;              // 过期时间（Unix 秒）| [EN] Expiry as a Unix timestamp in seconds
+  enums.KeyScenario scenario = 4;    // 回显场景，便于调用方自检 | [EN] Echoed scenario for the caller to verify
+}
+
+// 临时密钥解密请求。
+// [EN] Temporary key decrypt request
+message TempKeyDecryptRequest {
+  string key_id = 1;                 // 密钥ID | [EN] Key id @inject_tag: validate:"required"
+  enums.KeyScenario scenario = 2;    // 必须与签发时一致 | [EN] Must match the scenario used at issue @inject_tag: validate:"required"
+  bytes ciphertext = 3;              // 用公钥加密的密文 | [EN] Ciphertext encrypted with the public key @inject_tag: validate:"required"
+}
+
+// 临时密钥解密响应。
+// [EN] Temporary key decrypt response
+message TempKeyDecryptResponse {
+  bytes plaintext = 1;               // 明文 | [EN] Plaintext
+}
+
+// 销毁临时密钥请求。
+// [EN] Destroy temporary key request
+message TempKeyDestroyRequest {
+  string key_id = 1;                 // 密钥ID | [EN] Key id @inject_tag: validate:"required"
+  enums.KeyScenario scenario = 2;    // 必须与签发时一致 | [EN] Must match the scenario used at issue @inject_tag: validate:"required"
+}
+
+// 销毁临时密钥响应。
+// [EN] Destroy temporary key response
+message TempKeyDestroyResponse {
+  bool destroyed = 1;                // 是否真的删掉了（false 表示本就不存在）| [EN] Whether a key was actually removed; false means it was already gone
+}
+
+// 加密自检请求（调试用）。
+// [EN] Encrypt probe request, for debugging
+message TempKeyEncryptProbeRequest {
+  string key_id = 1;                 // 密钥ID | [EN] Key id @inject_tag: validate:"required"
+  enums.KeyScenario scenario = 2;    // 必须与签发时一致 | [EN] Must match the scenario used at issue @inject_tag: validate:"required"
+  string plaintext = 3;              // 待加密明文 | [EN] Plaintext to encrypt @inject_tag: validate:"required,max=256"
+}
+
+// 加密自检响应（调试用）。
+// [EN] Encrypt probe response, for debugging
+message TempKeyEncryptProbeResponse {
+  bytes ciphertext = 1;              // 密文，可直接送回 TempKeyDecrypt 验证闭环 | [EN] Ciphertext, feedable straight into TempKeyDecrypt to verify the round trip
+}
+
+//===========================  服务定义 | Service Definition  ==========================//
+
+// 临时密钥服务
+// [EN] Temporary key service
+service TempKeyService {
+  // 签发临时密钥
+  // [EN] Issue a temporary key
+  rpc TempKeyIssue(TempKeyIssueRequest) returns (TempKeyIssueResponse) {
+    option (google.api.http) = {
+      post: "/v1/temp-keys/issue"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "签发临时密钥 | Issue a temporary key"
+      description: "按租户 + 场景生成一对 RSA 密钥，返回公钥与密钥ID，私钥留在服务端并随 TTL 过期 | Generates an RSA pair for the tenant and scenario, returns the public key and key id, and keeps the private key server-side under a TTL"
+      tags: "TempKeyManagement"
+    };
+  }
+
+  // 使用临时私钥解密
+  // [EN] Decrypt with the temporary private key
+  rpc TempKeyDecrypt(TempKeyDecryptRequest) returns (TempKeyDecryptResponse) {
+    option (google.api.http) = {
+      post: "/v1/temp-keys/decrypt"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "解密 | Decrypt"
+      description: "用签发时留存的私钥解密密文，校验场景一致与租户归属 | Decrypts with the stored private key, enforcing the scenario match and tenant ownership"
+      tags: "TempKeyManagement"
+    };
+  }
+
+  // 销毁临时密钥
+  //
+  // 为什么是 POST 而不是 DELETE：销毁需要同时带 key_id 和 scenario 两个定位条件，
+  // 而 scenario 是枚举、放在 query 里要序列化成字符串再解析，容易在网关层出歧义。
+  // 动作型接口统一走 POST + 动词路径，与本仓库其他服务一致。
+  //
+  // [EN] POST rather than DELETE because destruction needs both key id and scenario to locate
+  // the key, and an enum in the query string must be serialized and re-parsed, which is easy to
+  // get wrong at the gateway. Action endpoints use POST with a verb path throughout this repo.
+  rpc TempKeyDestroy(TempKeyDestroyRequest) returns (TempKeyDestroyResponse) {
+    option (google.api.http) = {
+      post: "/v1/temp-keys/destroy"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "销毁临时密钥 | Destroy a temporary key"
+      description: "提前失效某个密钥，不等 TTL 到期 | Invalidates a key ahead of its TTL"
+      tags: "TempKeyManagement"
+    };
+  }
+
+  // 加密自检（调试用）
+  //
+  // 这个接口让调用方不写一行加密代码就能验证闭环：传明文拿密文，
+  // 再把密文送进 TempKeyDecrypt，拿回原文即说明密钥链路是通的。
+  //
+  // 注意它是用服务端持有的私钥推导出公钥再加密的，所以生产环境应当关掉
+  // ——它等于把「服务端能用这把私钥做任意运算」这件事暴露成一个接口。
+  // 真实加密必须由调用方用 TempKeyIssue 返回的公钥在自己这边完成。
+  //
+  // [EN] This endpoint lets a caller verify the round trip without writing any crypto: submit
+  // plaintext, get ciphertext, feed it to TempKeyDecrypt and check the original comes back. It
+  // encrypts by deriving the public key from the privately held one, so it should be disabled
+  // in production, where it amounts to exposing "the server will perform arbitrary operations
+  // with this private key" as an endpoint. Real encryption must happen on the caller's side
+  // with the public key returned by TempKeyIssue.
+  rpc TempKeyEncryptProbe(TempKeyEncryptProbeRequest) returns (TempKeyEncryptProbeResponse) {
+    option (google.api.http) = {
+      post: "/v1/temp-keys/encrypt-probe"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "加密自检（调试用，生产应关闭）| Encrypt probe, for debugging; disable in production"
+      description: "用服务端持有的密钥加密一段明文，供调用方验证加解密闭环 | Encrypts a short plaintext with the server-held key so the caller can verify the round trip"
+      tags: "TempKeyManagement"
+    };
+  }
+}

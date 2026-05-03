@@ -69,6 +69,20 @@ swagger:
         spec-path: "./proto/<% .MixedModule %>/<% .MixedService | snake %>_member_service.swagger.yaml"
         version: "1.0.0"
         enabled: true
+<%- if eq .IncludeKeyModule "true" %>
+
+      - name: "TempKeyService"
+        description: "临时密钥服务（RSA 签发 / 解密 / 销毁，场景 + 租户双重隔离） | Temporary key service: RSA issue, decrypt and destroy, isolated by scenario and tenant"
+        spec-path: "./proto/key/temp_key_service.swagger.yaml"
+        version: "1.0.0"
+        enabled: true
+
+      - name: "IdBlockService"
+        description: "ID 号段分发服务（集中发号，调用方本地缓冲） | Id block allocation: one central sequence, buffered by callers"
+        spec-path: "./proto/key/id_block_service.swagger.yaml"
+        version: "1.0.0"
+        enabled: true
+<%- end %>
 
   # 独立文档入口：按受众拆分文档，避免把所有接口塞进一页。
   # 聚合文档（merge）给内部排查用，拆分入口给对外交付用：

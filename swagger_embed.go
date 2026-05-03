@@ -42,6 +42,14 @@ var <% .MixedService | pascal %>ServiceSwagger []byte
 
 //go:embed proto/<% .MixedModule %>/<% .MixedService | snake %>_member_service.swagger.yaml
 var <% .MixedService | pascal %>MemberServiceSwagger []byte
+<%- if eq .IncludeKeyModule "true" %>
+
+//go:embed proto/key/temp_key_service.swagger.yaml
+var TempKeyServiceSwagger []byte
+
+//go:embed proto/key/id_block_service.swagger.yaml
+var IdBlockServiceSwagger []byte
+<%- end %>
 
 // 聚合 OpenAPI 文档 | Aggregated OpenAPI document
 //
@@ -63,6 +71,10 @@ var SwaggerFiles = map[string][]byte{
 	"proto/<% .SecondModule %>/<% .SecondService | snake %>_service.swagger.yaml":   <% .SecondService | pascal %>ServiceSwagger,
 	"proto/<% .MixedModule %>/<% .MixedService | snake %>_service.swagger.yaml":        <% .MixedService | pascal %>ServiceSwagger,
 	"proto/<% .MixedModule %>/<% .MixedService | snake %>_member_service.swagger.yaml": <% .MixedService | pascal %>MemberServiceSwagger,
+<%- if eq .IncludeKeyModule "true" %>
+	"proto/key/temp_key_service.swagger.yaml":                                          TempKeyServiceSwagger,
+	"proto/key/id_block_service.swagger.yaml":                                          IdBlockServiceSwagger,
+<%- end %>
 }
 
 // GetSwaggerFiles 返回全部 swagger 文件 | Return all swagger files

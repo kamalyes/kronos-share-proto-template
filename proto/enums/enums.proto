@@ -27,3 +27,14 @@ import public "proto/enums/<% .SecondModule %>.proto";
 // <% .MixedModule %> 模块枚举。
 // [EN] <% .MixedModule %> module enums
 import public "proto/enums/<% .MixedModule %>.proto";
+<%- if eq .IncludeKeyModule "true" %>
+
+// key 模块枚举（临时密钥与 ID 号段分发）。
+//
+// 这个模块是具体能力而不是占位示例，所以用 IncludeKeyModule 开关控制：
+// 不需要密钥/发号能力的协议中心可以关掉，关掉后这一段不生成。
+//
+// [EN] This module is a concrete capability rather than a placeholder example, so it is gated
+// by IncludeKeyModule: a hub that needs neither temporary keys nor id allocation turns it off.
+import public "proto/enums/key.proto";
+<%- end %>

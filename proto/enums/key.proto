@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+option go_package = "<% .ModuleName %>/pb/enums";
+option java_package = "<% .JavaPackage %>.enums";
+package <% .ProtoPackage %>.enums;
+
+// key 模块枚举 | key module enums
+// 枚举统一放在 proto/enums/ 下并注册到 enums.proto，禁止写在业务服务文件里。
+// [EN] Enums live in proto/enums/ and are registered in enums.proto, never inside a service file
+
+// 临时密钥使用场景。
+// [EN] Temporary key usage scenario
+//
+// 为什么密钥要绑场景：一对临时密钥如果不限用途，拿到登录场景公钥加密出来的密文
+// 就能送去支付场景解密。绑定场景之后，密钥在创建时就确定了用途，
+// 换场景使用会被直接拒绝，跨场景重放在协议层面就不成立。
+//
+// 新增场景必须在这里加枚举值，不要在服务侧用字符串自行扩展——
+// 那样下游按名称解析会得到未知值，而且各服务的拼写迟早对不上。
+//
+// [EN] An unscoped key pair lets ciphertext produced for the login flow be decrypted by the
+// payment flow. Binding the scenario fixes the purpose at creation time and makes a
+// cross-scenario replay impossible at the protocol level. A new scenario belongs here as an
+// enum value, never as an ad-hoc string on the service side, which decodes as unknown
+// downstream and eventually diverges in spelling between services.
+enum KeyScenario {
+  KEY_SCENARIO_UNSPECIFIED = 0; // 未指定（视为非法请求）| [EN] Unspecified, treated as invalid
+  KEY_SCENARIO_LOGIN = 1;       // 登录凭据加密 | [EN] Login credentials
+  KEY_SCENARIO_PAYMENT = 2;     // 支付要素加密 | [EN] Payment details
+  KEY_SCENARIO_PROFILE = 3;     // 个人敏感资料加密 | [EN] Personal profile data
+}
+
+// RSA 密钥长度。
+// [EN] RSA key size
+//
+// 用枚举而不是 int32：密钥长度不是任意数值，1000 位这种输入既不安全也生成不出来。
+// 枚举把合法取值固定在协议层，服务侧不必再校验一遍数值范围。
+//
+// 选型权衡：2048 是当前通用基线；4096 更强但生成明显更慢（量级差异，不是百分比），
+// 适合低频、长期有效的密钥；1024 已不满足现代安全要求，仅为兼容存量调用方保留。
+//
+// [EN] An enum rather than an int32, because a key size is not an arbitrary number: a value
+// like 1000 is neither secure nor constructible. The enum pins the legal values at the protocol
+// level so the service need not re-validate a numeric range. On the trade-off: 2048 is today's
+// general baseline; 4096 is stronger but markedly slower to generate, an order of magnitude
+// rather than a percentage, which suits infrequent long-lived keys; 1024 no longer meets modern
+// requirements and is kept only for existing callers.
+enum RsaKeySize {
+  RSA_KEY_SIZE_UNSPECIFIED = 0; // 未指定（服务侧取默认值）| [EN] Unspecified, the service picks a default
+  RSA_KEY_SIZE_1024 = 1;        // 1024 位（已不推荐，仅兼容存量）| [EN] 1024-bit, legacy only
+  RSA_KEY_SIZE_2048 = 2;        // 2048 位（推荐默认）| [EN] 2048-bit, recommended default
+  RSA_KEY_SIZE_4096 = 3;        // 4096 位（生成慢，低频场景用）| [EN] 4096-bit, slow to generate
+}

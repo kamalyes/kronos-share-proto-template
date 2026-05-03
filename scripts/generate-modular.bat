@@ -9,7 +9,7 @@ set "GO_MODULE=<% .ModuleName %>"
 set "PROTO_BASE_MODULES=enums"
 rem 业务模块列表：新增模块后必须加到这里，否则不会被生成。
 rem Service module list: a new module must be registered here or it will not be generated
-set "PROTO_SERVICE_MODULES=common <% .ExampleModule %> <% .SecondModule %> <% .MixedModule %>"
+set "PROTO_SERVICE_MODULES=common <% .ExampleModule %> <% .SecondModule %> <% .MixedModule %><% if eq .IncludeKeyModule "true" %> key<% end %>"
 set "PROTO_ALL_MODULES=%PROTO_BASE_MODULES% %PROTO_SERVICE_MODULES%"
 
 rem 聚合 OpenAPI 文档：全部业务 proto 合成一份静态文件，供下游多语言 SDK 与 API 门户消费
