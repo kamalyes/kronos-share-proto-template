@@ -911,7 +911,7 @@ go mod tidy
 4. 把 `{module}` 加到 `scripts/generate-modular.sh` 与 `.bat` 的 `PROTO_SERVICE_MODULES`
 5. 运行 `bash scripts/generate-modular.sh`（含 pb / gateway / swagger / inject-tags）
 6. 在 `swagger_embed.go` 注册新服务的 swagger 文件
-7. 在 `resources/<% .GatewayPrefix %>-dev.yaml` 的 `aggregate.services` 登记，文档站才能看到
+7. 在 `resources/<% .ProjectName %>-dev.yaml` 的 `aggregate.services` 登记，文档站才能看到
 8. `go mod tidy && go build ./... && go test ./...`
 
 漏掉第 4 步最常见：proto 写完了但生成脚本没登记，CI 不会报错，只是新接口凭空消失
@@ -925,7 +925,7 @@ not know it, CI stays green, and the new endpoints simply never appear
 |---|------|-----------|
 | 1 | `scripts/generate-modular.sh` 与 `.bat` 的 `PROTO_SERVICE_MODULES` | 完全不会被生成，CI 也不报错 |
 | 2 | `swagger_embed.go` 的 `//go:embed` 与 `SwaggerFiles` | 文档站拿不到这个服务的 swagger |
-| 3 | `resources/<% .GatewayPrefix %>-dev.yaml` 的 `aggregate.services` | 网关不聚合，接口在文档里不可见 |
+| 3 | `resources/<% .ProjectName %>-dev.yaml` 的 `aggregate.services` | 网关不聚合，接口在文档里不可见 |
 
 第 1 步最常被漏：proto 写完了但脚本没登记，新接口凭空消失。
 [EN] Step 1 is missed most often: the proto exists but the script does not know it, and the

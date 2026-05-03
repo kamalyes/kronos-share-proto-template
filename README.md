@@ -79,7 +79,6 @@ kopy new https://github.com/kamalyes/kronos-share-proto-template -o ./demo-share
   --var SecondService=Warehouse \
   --var MixedModule=tenant \
   --var MixedService=Tenant \
-  --var GatewayPrefix=gateway-demo \
   --var HTTPPort=18080 \
   --var DefaultLocale=zh \
   --var PipelineRepo=kamalyes/deploy-pipeline \
@@ -143,7 +142,6 @@ go run ./bootstrap                       # 文档站 http://127.0.0.1:18080/swag
 | `SecondService` | string | `Warehouse` | 示例模块二的服务名 |
 | `MixedModule` | string | `tenant` | 混合模块的目录名（一模块多 service）|
 | `MixedService` | string | `Tenant` | 混合模块的聚合根服务名，成员服务自动叫 `XxxMember` |
-| `GatewayPrefix` | string | `gateway-<prefix>` | 网关配置文件前缀 |
 | `HTTPPort` | int | `18080` | 文档网关端口 |
 | `DefaultLocale` | select | `zh` | 校验错误默认语言（go-argus 内置九种）|
 | `PipelineRepo` | string | `kamalyes/deploy-pipeline` | 复用型工作流仓库 |
@@ -172,7 +170,7 @@ kronos-share-proto-template/
 ├── docs/downstream-proto-sync.yml  # 下游 Go 服务的协议同步工作流（给生成项目复制去用）
 ├── validation/                     # go-argus 校验层 + 拦截器 + 契约测试
 ├── scripts/                        # 18 个生成/环境脚本（.sh + .bat），init.* 一条命令打通
-├── resources/__gateway_prefix__-dev.yaml  # 网关与 swagger 聚合配置
+├── resources/__project_name__-dev.yaml    # 网关与 swagger 聚合配置
 ├── bootstrap/                      # 文档网关启动器
 ├── swagger_embed.go / _stub.go     # swagger 嵌入（build tag 分流）
 ├── go.mod                          # 依赖：grpc / protobuf / gateway / argus / go-config

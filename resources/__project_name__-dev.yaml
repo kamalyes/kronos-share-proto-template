@@ -1,13 +1,13 @@
 # ============================================================================
 # go-rpc-gateway 开发环境配置 | Development configuration
 #
-# 加载规则：bootstrap 以 WithPrefix("<% .GatewayPrefix %>") + 环境名拼出文件名，
+# 加载规则：bootstrap 以 WithPrefix("<% .ProjectName %>") + 环境名拼出文件名，
 # 即本文件对应 environment=development新增环境就复制一份改名，例如
-# <% .GatewayPrefix %>-prod.yaml，并在 bootstrap/main.go 注册环境前缀。
+# <% .ProjectName %>-prod.yaml，并在 bootstrap/main.go 注册环境前缀。
 #
-# [EN] Loading rule: bootstrap combines WithPrefix("<% .GatewayPrefix %>") with the
+# [EN] Loading rule: bootstrap combines WithPrefix("<% .ProjectName %>") with the
 # environment name, so this file serves environment=development. Copy and rename it
-# for another environment (e.g. <% .GatewayPrefix %>-prod.yaml) and register the
+# for another environment (e.g. <% .ProjectName %>-prod.yaml) and register the
 # prefix in bootstrap/main.go.
 # ============================================================================
 

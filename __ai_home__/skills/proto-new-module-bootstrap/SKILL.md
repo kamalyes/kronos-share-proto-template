@@ -123,7 +123,8 @@ service <ServiceName> {
 - [scripts/generate-modular.sh](../../../scripts/generate-modular.sh)
 - [scripts/generate-modular.bat](../../../scripts/generate-modular.bat)
 
-将新模块加入服务模块数组（通常是 `PROTO_MODULES`）。
+将新模块加入服务模块数组 `PROTO_SERVICE_MODULES`（基础模块数组是 `PROTO_BASE_MODULES`，
+只提供通用 enum/message 的模块才放那边）。
 
 ### 第 3 步：执行生成
 
@@ -135,7 +136,7 @@ service <ServiceName> {
 
 ### 第 4 步：接入 gateway 服务聚合
 
-更新 [resources/<% .GatewayPrefix %>-dev.yaml](../../../resources/<% .GatewayPrefix %>-dev.yaml) 的 `aggregate.services`
+更新 [resources/<% .ProjectName %>-dev.yaml](../../../resources/<% .ProjectName %>-dev.yaml) 的 `aggregate.services`
 
 模板：
 

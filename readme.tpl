@@ -186,7 +186,7 @@ POST   /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/members/batch-in
 ```
 
 不需要的模块直接删目录，并同步删掉 `scripts/generate-modular.sh|bat` 里的登记、
-`swagger_embed.go` 里的 embed、`resources/<% .GatewayPrefix %>-dev.yaml` 里的聚合条目。
+`swagger_embed.go` 里的 embed、`resources/<% .ProjectName %>-dev.yaml` 里的聚合条目。
 
 ## ⚙️ 代码生成
 
@@ -227,7 +227,7 @@ server := grpc.NewServer(
     grpc.UnaryInterceptor(validation.UnaryServerInterceptor(validation.InterceptorOptions{
         // 免校验的方法（如健康检查）
         // 免校验方法，格式 "/<包名>.<模块>.<服务>Service/<方法>"，典型是健康检查
-        SkipMethods: []string{"/<% .ProtoPackage %>.health.HealthService/Check"},
+        SkipMethods: []string{"/<% .ProtoPackage %>.<% .ExampleModule %>.<% .ExampleService %>Service/<% .ExampleService %>List"},
         // 只允许集群内调用，支持 CIDR 与通配符；留空不限制
         AllowedPeerCIDRs: []string{"10.0.0.0/8", "192.168.1.*"},
     })),
@@ -371,7 +371,7 @@ proto 改了之后：等 CI 在 `<% .BaseBranch %>` 上自动生成并提交 pb�
 
 **新加的接口在文档站里看不到？**
 三个地方要登记：`scripts/generate-modular.sh|bat` 的模块列表、`swagger_embed.go` 的 embed、
-`resources/<% .GatewayPrefix %>-dev.yaml` 的 `aggregate.services`
+`resources/<% .ProjectName %>-dev.yaml` 的 `aggregate.services`
 
 **校验没生效？**
 先确认 proto 字段注释里有 `@inject_tag: validate:"..."`，再确认 `pb/` 里的结构体

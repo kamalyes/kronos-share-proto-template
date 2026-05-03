@@ -190,7 +190,7 @@ POST   /v1/<% .MixedModule %>/<% .MixedService | kebab %>s/{id}/members/batch-in
 
 To drop a module, delete its directory and also remove its entry from
 `scripts/generate-modular.sh|bat`, its embed from `swagger_embed.go` and its aggregation
-entry from `resources/<% .GatewayPrefix %>-dev.yaml`.
+entry from `resources/<% .ProjectName %>-dev.yaml`.
 
 ## ⚙️ Code generation
 
@@ -232,7 +232,7 @@ server := grpc.NewServer(
     grpc.UnaryInterceptor(validation.UnaryServerInterceptor(validation.InterceptorOptions{
         // Methods that skip validation, e.g. health checks
         // Methods that skip validation, shaped "/<package>.<module>.<Service>Service/<Method>"
-        SkipMethods: []string{"/<% .ProtoPackage %>.health.HealthService/Check"},
+        SkipMethods: []string{"/<% .ProtoPackage %>.<% .ExampleModule %>.<% .ExampleService %>Service/<% .ExampleService %>List"},
         // Restrict callers to the cluster; CIDR and wildcards supported, empty disables it
         AllowedPeerCIDRs: []string{"10.0.0.0/8", "192.168.1.*"},
     })),
@@ -381,7 +381,7 @@ Every script has a `.bat` twin that behaves identically on Windows.
 
 **My new endpoints are missing from the docs site**
 Three places need the module: the list in `scripts/generate-modular.sh|bat`, the embed in
-`swagger_embed.go`, and `aggregate.services` in `resources/<% .GatewayPrefix %>-dev.yaml`.
+`swagger_embed.go`, and `aggregate.services` in `resources/<% .ProjectName %>-dev.yaml`.
 
 **Validation does not fire**
 Check that the proto field comment carries `@inject_tag: validate:"..."`, then check the

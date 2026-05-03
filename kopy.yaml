@@ -40,7 +40,7 @@ delimiters:
 # kopy 渲染 default 时变量上下文是空的，且那个引擎里没有过滤器，实测：
 #   default: "<% .A %>-suffix"          A 已赋值 zzz，仍渲染成  <no value>-suffix
 #   default: "<% .A | upper %>-filtered" 原文照搬进答案，再写进每个生成文件
-# 所以下面 ProjectName / ModuleName / ProtoPackage / JavaPackage / GatewayPrefix
+# 所以下面 ProjectName / ModuleName / ProtoPackage / JavaPackage
 # 的默认值都写死成与 OrgName=kamalyes、OrgPrefix=demo 自洽的一套。
 # 改 OrgName 或 OrgPrefix 时这五个要一起改，不会自动跟着变。
 #
@@ -201,12 +201,6 @@ questions:
     default: Tenant
     required: true
 
-  - name: GatewayPrefix
-    prompt: "网关配置前缀（决定 resources/<prefix>-<env>.yaml 的文件名）| Gateway config prefix, names resources/<prefix>-<env>.yaml"
-    type: string
-    default: "gateway-demo"
-    required: true
-
   - name: HTTPPort
     prompt: "文档网关 HTTP 端口 | HTTP port of the docs gateway"
     type: int
@@ -316,8 +310,6 @@ rename:
     value: "<% .ProjectName %>"
   - pattern: "__org_prefix__"
     value: "<% .OrgPrefix %>"
-  - pattern: "__gateway_prefix__"
-    value: "<% .GatewayPrefix %>"
 
 # ============================================================================
 # 生命周期钩子 | Lifecycle hooks

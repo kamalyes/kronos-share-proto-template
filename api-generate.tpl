@@ -101,7 +101,7 @@ cp -r proto/<% .MixedModule %> proto/<module>
 | --- | --- | --- |
 | 1 | `scripts/generate-modular.sh` 与 `.bat` 的 `PROTO_SERVICE_MODULES` | 完全不会被生成，CI 也不报错 |
 | 2 | `swagger_embed.go` 的 `//go:embed` 与 `SwaggerFiles` | 文档站拿不到这个服务的 swagger |
-| 3 | `resources/<% .GatewayPrefix %>-dev.yaml` 的 `aggregate.services` | 网关不聚合，接口在文档里不可见 |
+| 3 | `resources/<% .ProjectName %>-dev.yaml` 的 `aggregate.services` | 网关不聚合，接口在文档里不可见 |
 | 4 | `proto/openapi/bundle.proto` 的 `tags` | 聚合文档里这个分组只有名字没有描述 |
 
 ## 常见故障 | Troubleshooting

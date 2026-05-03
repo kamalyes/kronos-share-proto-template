@@ -32,7 +32,7 @@ user-invocable: true
 
 最少输入：
 
-- 检查范围：全仓库或单模块（如 `proto/access_control`）
+- 检查范围：全仓库或单模块（如 `proto/<% .ExampleModule %>`）
 
 可选输入：
 
@@ -43,23 +43,23 @@ user-invocable: true
 
 以下基线用于降低误报，若实际代码已变更，以当前文件内容为准动态更新：
 
-1. `proto` 目录当前模块：`access_control`、`health`、`common`、`enums`
-2. 生成脚本模块数组：
-	- `PROTO_BASE_MODULES=(enums common)`（sh）
-	- `PROTO_MODULES=(health access_control)`（sh）
-	- `PROTO_BASE_MODULES=enums common`（bat）
-	- `PROTO_MODULES=health access_control`（bat）
-3. gateway 聚合服务当前仅两项：`HealthService`、`AccessControlService`
+1. `proto` 目录当前模块：`enums`、`common`、`<% .ExampleModule %>`、`<% .SecondModule %>`、`<% .MixedModule %>`
+2. 生成脚本模块数组（以脚本当前内容为准，不要照抄本清单）：
+	- `PROTO_BASE_MODULES=(enums)`（sh）
+	- `PROTO_SERVICE_MODULES=(common <% .ExampleModule %> <% .SecondModule %> <% .MixedModule %>)`（sh）
+	- `PROTO_BASE_MODULES=enums`（bat）
+	- `PROTO_SERVICE_MODULES=common <% .ExampleModule %> <% .SecondModule %> <% .MixedModule %>`（bat）
+3. gateway 聚合服务：`<% .ExampleService %>Service`、`<% .SecondService %>Service`、`<% .MixedService %>Service`、`<% .MixedService %>MemberService`
 4. `aggregate.documents` 当前可不存在；不存在时不判错，仅给信息提示
-5. `swagger_embed.go` 当前嵌入两份 swagger：health 与 access_control
+5. `swagger_embed.go` 为每个服务模块各嵌入一份 swagger
 
 ## 事实来源（默认读取）
 
 - [proto/common/common.proto](../../../proto/common/common.proto)
 - [proto/enums/enums.proto](../../../proto/enums/enums.proto)
-- [proto/access_control/access_control_service.proto](../../../proto/access_control/access_control_service.proto)
-- [proto/health/health_service.proto](../../../proto/health/health_service.proto)
-- [resources/<% .GatewayPrefix %>-dev.yaml](../../../resources/<% .GatewayPrefix %>-dev.yaml)
+- [proto/<% .ExampleModule %>/<% .ExampleService | snake %>_service.proto](../../../proto/<% .ExampleModule %>/<% .ExampleService | snake %>_service.proto)
+- [proto/<% .MixedModule %>/<% .MixedService | snake %>_service.proto](../../../proto/<% .MixedModule %>/<% .MixedService | snake %>_service.proto)
+- [resources/<% .ProjectName %>-dev.yaml](../../../resources/<% .ProjectName %>-dev.yaml)
 - [swagger_embed.go](../../../swagger_embed.go)
 - [scripts/generate-modular.sh](../../../scripts/generate-modular.sh)
 - [scripts/generate-modular.bat](../../../scripts/generate-modular.bat)
@@ -135,7 +135,7 @@ enum StatusCode {
 	- [scripts/generate-modular.bat](../../../scripts/generate-modular.bat)
 2. 模块数组应保持语义一致：
 	- 基础模块放 `PROTO_BASE_MODULES`
-	- 服务模块放 `PROTO_MODULES`
+	- 服务模块放 `PROTO_SERVICE_MODULES`
 3. 生成产物路径应匹配当前工程约定：
 	- `pb/<module>/*.pb.go`
 	- `pb/<module>/*_grpc.pb.go`
@@ -171,9 +171,12 @@ enum StatusCode {
 
 ### G. 仓库已知特例（避免误判）
 
-1. `HealthService` 路径使用 `/health`、`/ready`，不强制 `/v1/*`
-2. `health_service.proto` 的 `HealthCheckResponse.data` 与 `ReadinessCheckResponse.data` 字段号为 `3`，按现状视为可接受，不自动建议改号
-3. `common` 与 `enums` 属于基础模块，不强制要求 service/http/openapi 注解
+1. `common` 与 `enums` 属于基础模块，只提供 message / enum，不强制要求
+   service、http 或 openapi 注解
+2. 探活类接口（如 `/health`、`/ready`）不强制 `/v1/*` 前缀：它们由基础设施
+   按固定路径探测，加版本前缀反而要改探针配置
+3. 本节是「本仓库当前的例外」，不是通用规则。新增例外前先确认它确实是
+   有意为之而不是漏改——把漏改写进例外清单，等于把问题变成规范
 
 ## 执行流程
 
@@ -194,7 +197,7 @@ enum StatusCode {
 ## 回归验证建议
 
 1. 重新执行生成脚本并确认 pb/swagger 产物齐全
-2. 检查 [resources/<% .GatewayPrefix %>-dev.yaml](../../../resources/<% .GatewayPrefix %>-dev.yaml) 聚合页面是否可见目标服务
+2. 检查 [resources/<% .ProjectName %>-dev.yaml](../../../resources/<% .ProjectName %>-dev.yaml) 聚合页面是否可见目标服务
 3. 检查 [swagger_embed.go](../../../swagger_embed.go) 的 `GetSwaggerFile` 是否能读取目标 swagger
 4. 若存在 documents，校验文档只含白名单路径
 
