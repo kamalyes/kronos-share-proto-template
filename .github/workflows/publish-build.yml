@@ -179,7 +179,26 @@ jobs:
           # module is switched off, so the branch would accumulate orphaned files that still
           # compile and nobody notices. Excluding .git is mandatory or the branch loses its own
           # history
-          rsync -a --delete --exclude '.git' /tmp/rendered/ "$BUILD_DIR/"
+          # 排除 .github：build 分支是可消费的 Go 模块，不是跑 CI 的分支
+          #
+          # 带上 workflow 有两个实际问题：
+          #   1. 推送会被拒GitHub 把 .github/workflows/ 下的所有文件都当 workflow
+          #      来判权限（连 GUIDE.md 这种 markdown 也算），用缺 workflows 权限的
+          #      App/token 推送时报：
+          #        refusing to allow a GitHub App to create or update workflow ... 
+          #      给凭据加权限能绕过，但那是在给一个不该存在的东西开权限
+          #   2. 真跑起来更糟generate-pb.yml 的触发条件是 push，它会在 build 分支上
+          #      重新生成 pb 并提交回 build——而 build 每次发布都被整体覆盖，
+          #      于是两个写入方互相覆盖，谁赢取决于时序
+          #
+          # [EN] Excluded because the build branch is a consumable Go module, not a branch that
+          # runs CI. Keeping workflows breaks the push, since GitHub treats every file under
+          # .github/workflows/ as a workflow for permission purposes, even a markdown file, and
+          # a credential without the workflows permission is refused; granting that permission
+          # would only authorize something that should not be there. Worse, generate-pb.yml
+          # triggers on push and would regenerate pb and commit back to build, which every
+          # publish replaces wholesale, leaving two writers overwriting each other by timing.
+          rsync -a --delete --exclude '.git' --exclude '.github' /tmp/rendered/ "$BUILD_DIR/"
 
           cd "$BUILD_DIR"
           git add -A
