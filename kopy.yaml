@@ -269,6 +269,17 @@ ignore:
   # key 模块：关掉则整组不生成，避免留下没被 enums.proto / 脚本引用的孤立文件
   # [EN] The key module is excluded as a group, so nothing is left unreferenced by enums.proto
   # or the generation scripts
+  # publish-build.yml 只服务于模板仓库自己（渲染自身并推 build 分支），
+  # 生成出来的协议中心不需要它——那边用 generate-pb.yml 把 pb 直接提交回主干
+  # 不排除的话每个生成仓库都会多一个会强推 build 分支的工作流，
+  # 而它钉死的变量指向的是本模板仓库，跑起来等于拿别人的仓库发布本模板的产物
+  #
+  # [EN] publish-build.yml serves only the template repository, which renders itself and pushes
+  # the build branch; a generated hub commits pb back to its own trunk through generate-pb. Left
+  # in, every generated repository would carry a workflow that force-pushes a build branch while
+  # its pinned variables point at this template, publishing this template's artifacts from
+  # someone else's repository.
+  - ".github/workflows/publish-build.yml"
   - '<% if ne .IncludeKeyModule "true" %>proto/key/<% end %>'
   - '<% if ne .IncludeKeyModule "true" %>proto/key/**<% end %>'
   - '<% if ne .IncludeKeyModule "true" %>proto/key/temp_key_service.proto<% end %>'

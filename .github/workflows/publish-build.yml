@@ -1,0 +1,221 @@
+name: Publish Build Branch
+
+run-name: 📦 [publish-build] by @${{ github.actor }} • ${{ github.sha }}
+
+# 这个工作流操作的是「模板仓库自己」，不是生成出来的仓库
+#
+# 所以它是真实的 .yml 而不是 .yml.tpl：其余工作流都带 .tpl 后缀，因为它们是给
+# 生成出来的协议中心用的，里面的占位符要等渲染才合法，GitHub 直接解析会报错
+# 这一个没有任何占位符，由模板仓库自己执行，因此不加后缀；同时它被 kopy.yaml 的
+# ignore 排除，不会被复制进生成出来的仓库——那边有自己的 generate-pb 工作流，
+# 把 pb 直接提交回主干，不需要 build 分支
+#
+# [EN] This workflow acts on the template repository itself rather than on a generated one,
+# which is why it is a real .yml: every other workflow carries a .tpl suffix because it targets
+# generated hubs, where the placeholders are only valid after rendering and GitHub would fail to
+# parse them. This one contains no placeholders and runs in the template repo, so it needs no
+# suffix; it is excluded by kopy.yaml's ignore list so generated repositories do not inherit it,
+# since those commit pb back to their own trunk through generate-pb and need no build branch.
+
+# ============================================================================
+# build 分支是什么
+# ============================================================================
+# master 全是 kopy 占位符（proto/__module__/ 之类），不是合法 Go，go get 拉不动
+# 这个工作流把模板按下面钉死的一组变量渲染一遍、跑完 protoc 生成、验证能编译，
+# 然后把结果推到 build 分支于是同一个仓库同时是「模板」和「可消费的依赖」：
+#
+#   go get github.com/kamalyes/kronos-share-proto-template@build
+#
+# build 分支只服务于 kronos-service-template / kronos-key-service-template 的
+# 默认值，让它们开箱就能编译、能跑，并且模块划分天然对齐
+# 真实项目仍然是用 kopy 从 master 生成自己的协议中心仓库，不要依赖 build 分支
+# ——跟分支意味着上游一提交依赖就变了，复现不了历史构建
+#
+# [EN] master is all kopy placeholders and not valid Go, so go get cannot fetch it. This
+# workflow renders the template with the variable set pinned below, runs the protoc generation,
+# verifies it compiles and pushes the result to the build branch, making one repository both the
+# template and a consumable dependency. The branch exists only to serve the defaults of the
+# service and key-service templates so they compile out of the box with module layouts that line
+# up by construction. A real project still generates its own hub from master with kopy and should
+# not depend on the build branch, since tracking a branch means an upstream commit silently
+# changes the dependency and past builds cannot be reproduced.
+
+on:
+  push:
+    branches: [master]
+    # 只有影响生成结果的改动才重新发布改 README 不该触发一次完整的
+    # 渲染 + protoc + 编译，那要好几分钟
+    # [EN] Only changes that affect the generated output republish: a README edit should not
+    # trigger a full render, protoc run and build, which takes several minutes
+    paths:
+      - 'proto/**'
+      - 'scripts/**'
+      - 'kopy.yaml'
+      - 'go.mod'
+      - 'swagger_embed.go'
+      - 'swagger_embed_stub.go'
+      - 'validation/**'
+      - 'bootstrap/**'
+      - 'resources/**'
+      - '.github/workflows/publish-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  # 同一分支的并发发布会互相强推，后跑完的覆盖先跑完的，结果取决于完成顺序
+  # 串行化掉；cancel-in-progress 让排队中的旧任务直接作废，只发最新的那次
+  # [EN] Concurrent publishes would overwrite each other and the result would depend on
+  # completion order. Serialize, and cancel queued runs so only the newest is published
+  group: publish-build
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Render, Generate & Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout Template
+        uses: actions/checkout@v6
+
+      - name: 🐹 Setup Go
+        uses: actions/setup-go@v6
+        with:
+          # 不能用 go-version-file: go.mod —— 模板的 go.mod 里是 <% .GoVersion %>，
+          # 不是版本号这里与 kopy.yaml 里 GoVersion 的默认值保持一致，
+          # 改那个默认值时记得同步这里
+          # [EN] go-version-file cannot be used because the template's go.mod holds a
+          # placeholder rather than a version. Keep this in step with the GoVersion default
+          go-version: '1.25'
+
+      - name: 🔧 Install kopy
+        run: go install github.com/kamalyes/kopy@latest
+
+      - name: 💾 Cache Protobuf Toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/bin
+            ~/go/src
+          key: pb-tools-${{ runner.os }}-${{ hashFiles('scripts/common.sh', 'scripts/setup-dependencies.sh', 'scripts/setup-protobuf-includes.sh') }}
+
+      - name: 🎨 Render Template
+        id: render
+        run: |
+          set -euo pipefail
+          # 变量在这里钉死，必须与 kronos-service-template / kronos-key-service-template
+          # 的默认值一一对应，否则生成出来的服务 import 的模块名对不上
+          #
+          # ModuleName 必须正好是本仓库的路径：go get <path>@build 要求 build 分支
+          # 根目录的 go.mod 声明的就是这个路径，差一个字符就解析不到
+          #
+          # [EN] The variables are pinned here and must match the defaults of the service and
+          # key-service templates, or the generated services import a module name that does not
+          # exist. ModuleName must be exactly this repository's path, because go get requires the
+          # go.mod at the build branch root to declare that path.
+          kopy new . -o /tmp/rendered -y --hooks never \
+            --var OrgName=kamalyes \
+            --var OrgPrefix=kronos \
+            --var ProjectName=kronos-share-proto-template \
+            --var ModuleName=github.com/kamalyes/kronos-share-proto-template \
+            --var ProtoPackage=kronos.api \
+            --var JavaPackage=com.kamalyes.kronos.api \
+            --var AiAssistant=.trae \
+            --var IncludeKeyModule=true
+
+      - name: 📥 Install Protobuf Dependencies
+        working-directory: /tmp/rendered
+        run: bash scripts/setup-all.sh --no-pause
+
+      - name: 🔨 Generate Protobuf
+        working-directory: /tmp/rendered
+        run: bash scripts/generate-modular.sh
+
+      - name: ✅ Verify Generated Code
+        working-directory: /tmp/rendered
+        run: |
+          set -euo pipefail
+          go mod tidy
+          # 两种构建都要验：不带 tag 走 swagger_embed_stub.go，带 tag 走 swagger_embed.go，
+          # 后者的 go:embed 路径写错时只有带 tag 才会暴露
+          # [EN] Both builds matter: without the tag the stub is linked, with it the embedding
+          # file is, and a wrong go:embed path only surfaces in the tagged build
+          go build ./...
+          go build -tags swagger ./...
+          go vet ./...
+          go test ./...
+
+      - name: 🚀 Publish To Build Branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 在独立的工作副本里操作 build 分支，不碰 master 的工作区
+          # [EN] Work on the build branch in a separate clone so master's tree is untouched
+          BUILD_DIR=/tmp/build-branch
+          git clone --depth 1 --branch build \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "$BUILD_DIR" 2>/dev/null || {
+              echo "build 分支不存在，新建一个空分支 | build branch absent, creating an orphan"
+              git clone --depth 1 \
+                "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+                "$BUILD_DIR"
+              git -C "$BUILD_DIR" checkout --orphan build
+              git -C "$BUILD_DIR" rm -rf . >/dev/null 2>&1 || true
+            }
+
+          # 用 rsync --delete 整体替换：逐个 cp 会把上一次生成、这次已经删掉的
+          # 文件留在分支里（比如关掉某个模块之后），于是 build 分支里堆着
+          # 再也不会被引用的孤立文件，而且照样能编译，没人会发现
+          # 保留 .git 是必须的，否则把分支自己的历史删了
+          #
+          # [EN] rsync --delete replaces the tree wholesale: copying file by file would leave
+          # behind artifacts from the previous run that no longer exist, for instance after a
+          # module is switched off, so the branch would accumulate orphaned files that still
+          # compile and nobody notices. Excluding .git is mandatory or the branch loses its own
+          # history
+          rsync -a --delete --exclude '.git' /tmp/rendered/ "$BUILD_DIR/"
+
+          cd "$BUILD_DIR"
+          git add -A
+
+          # 内容没变就不提交：每次都提交会让 go get <mod>@build 每次解析出新的
+          # 伪版本（伪版本含提交时间），于是下游的 go.mod 在协议毫无变化时也跟着抖
+          # [EN] Skip the commit when nothing changed: committing every run would make
+          # go get resolve a new pseudo-version each time, since a pseudo-version embeds the
+          # commit time, and downstream go.mod files would churn with no contract change
+          if git diff --cached --quiet; then
+            echo "✅ 生成结果与 build 分支一致，跳过发布 | identical to the build branch, nothing to publish"
+            {
+              echo "### 📦 Publish Build Branch"
+              echo
+              echo "**结果**：无变更，跳过发布"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git diff --cached --stat | tail -40
+
+          git commit \
+            -m "📦 build: 由 ${GITHUB_SHA::7} 渲染生成" \
+            -m "来源分支: ${GITHUB_REF_NAME}" \
+            -m "本分支由 .github/workflows/publish-build.yml 自动维护，请勿手工提交——下一次发布会被整体覆盖" \
+            -m "模板源码在 master，这里是渲染 + protoc 生成后的可消费产物"
+
+          git push origin build
+
+          {
+            echo "### 📦 Publish Build Branch"
+            echo
+            echo "**来源**：\`${GITHUB_SHA::7}\` on \`${GITHUB_REF_NAME}\`"
+            echo
+            echo "消费方式："
+            echo '```'
+            echo "go get github.com/${GITHUB_REPOSITORY}@build"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
