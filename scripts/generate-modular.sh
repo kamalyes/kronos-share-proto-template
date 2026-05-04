@@ -7,7 +7,7 @@ GO_MODULE="<% .ModuleName %>"
 PROTO_BASE_MODULES=(enums)
 # 业务模块列表：新增模块后必须加到这里，否则不会被生成。
 # Service module list: a new module must be registered here or it will not be generated
-PROTO_SERVICE_MODULES=(common <% .ExampleModule %> <% .SecondModule %> <% .MixedModule %><% if eq .IncludeKeyModule "true" %> key<% end %>)
+PROTO_SERVICE_MODULES=(common <% .ExampleModule %> <% .SecondModule %> <% .MixedModule %><% if eq .IncludeAccessControlModule "true" %> access_control<% end %><% if eq .IncludeKeyModule "true" %> key<% end %>)
 PROTO_ALL_MODULES=("${PROTO_BASE_MODULES[@]}" "${PROTO_SERVICE_MODULES[@]}")
 
 project_root

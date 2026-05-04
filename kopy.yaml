@@ -219,6 +219,17 @@ questions:
   # [EN] The key module is a concrete capability rather than a placeholder example, hence the
   # toggle. On by default because the service template's id block allocation depends on it and
   # the key-service template implements it.
+  # access_control 模块：网关的鉴权契约。
+  # 默认开：kronos-gateway-template 的鉴权中间件调它，
+  # kronos-access-control-template 实现它。
+  #
+  # [EN] The gateway's authorization contract. On by default because the gateway template's
+  # middleware calls it and the access-control template implements it.
+  - name: IncludeAccessControlModule
+    prompt: "是否生成 access_control 模块（网关鉴权契约）| Generate the access_control module: the gateway's authorization contract"
+    type: bool
+    default: "true"
+
   - name: IncludeKeyModule
     prompt: "是否生成 key 模块（临时 RSA 密钥 + ID 号段分发）| Generate the key module: temporary RSA keys and id block allocation"
     type: bool
@@ -280,6 +291,13 @@ ignore:
   # its pinned variables point at this template, publishing this template's artifacts from
   # someone else's repository.
   - ".github/workflows/publish-build.yml"
+  # access_control 模块：关掉则整组不生成
+  # [EN] Excluded as a group when the toggle is off
+  - '<% if ne .IncludeAccessControlModule "true" %>proto/access_control/<% end %>'
+  - '<% if ne .IncludeAccessControlModule "true" %>proto/access_control/**<% end %>'
+  - '<% if ne .IncludeAccessControlModule "true" %>proto/access_control/auth_service.proto<% end %>'
+  - '<% if ne .IncludeAccessControlModule "true" %>proto/enums/access_control.proto<% end %>'
+  - '<% if ne .IncludeAccessControlModule "true" %>proto/common/payload.proto<% end %>'
   - '<% if ne .IncludeKeyModule "true" %>proto/key/<% end %>'
   - '<% if ne .IncludeKeyModule "true" %>proto/key/**<% end %>'
   - '<% if ne .IncludeKeyModule "true" %>proto/key/temp_key_service.proto<% end %>'

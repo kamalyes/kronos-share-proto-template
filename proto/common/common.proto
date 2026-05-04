@@ -27,6 +27,12 @@ import public "proto/common/pagination.proto";
 // 多语言文本。
 // [EN] Localized text
 import public "proto/common/i18n.proto";
+<%- if eq .IncludeAccessControlModule "true" %>
+
+// 认证载荷（网关与下游服务之间传递调用者身份）。
+// [EN] Authentication payload, carrying caller identity from the gateway to downstream services
+import public "proto/common/payload.proto";
+<%- end %>
 
 // <% .ExampleModule %> 模块实体。
 // [EN] <% .ExampleModule %> module entities
