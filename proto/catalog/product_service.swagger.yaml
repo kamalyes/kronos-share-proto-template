@@ -1,0 +1,584 @@
+swagger: "2.0"
+info:
+  title: Kronos Product Service
+  description: Product 管理服务（完整 CRUD 示例：POST/GET/PUT/PATCH/DELETE 全覆盖） | Product management service (full CRUD example covering POST/GET/PUT/PATCH/DELETE)
+  version: 1.0.0
+tags:
+  - name: ProductManagement
+    description: Product 管理 | Product Management
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /v1/catalog/products:
+    get:
+      summary: Product列表 | Product list
+      operationId: ProductService_ProductList
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/catalogProductListResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page_request.page
+          description: 当前页码 | [EN] Current page number
+          in: query
+          required: false
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_request.size
+          description: 每页条数（上限保护，防止一次拉全表） | [EN] Page size, capped to protect the backend
+          in: query
+          required: false
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 200
+        - name: page_request.total
+          description: 总条数（响应字段，请求 query 不继承必填） | [EN] Total count
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: sort.field
+          description: 排序字段 | [EN] Sort field
+          in: query
+          required: false
+          type: string
+        - name: sort.ascending
+          description: 是否升序 | [EN] Whether ascending
+          in: query
+          required: false
+          type: boolean
+        - name: keyword
+          description: 搜索关键词（名称、编码） | [EN] Search keyword (name, code)
+          in: query
+          required: false
+          type: string
+        - name: tenant_id
+          description: 租户ID | [EN] Tenant ID
+          in: query
+          required: false
+          type: string
+        - name: type
+          description: |-
+            类型 | [EN] Type
+
+             - PRODUCT_TYPE_UNSPECIFIED: 未指定 | [EN] Unspecified
+             - PRODUCT_TYPE_PERSONAL: 个人 | [EN] Personal
+             - PRODUCT_TYPE_ORGANIZATION: 组织 | [EN] Organization
+          in: query
+          required: false
+          type: string
+          enum:
+            - PRODUCT_TYPE_UNSPECIFIED
+            - PRODUCT_TYPE_PERSONAL
+            - PRODUCT_TYPE_ORGANIZATION
+          default: PRODUCT_TYPE_UNSPECIFIED
+        - name: status
+          description: |-
+            状态 | [EN] Status
+
+             - COMMON_STATUS_UNSPECIFIED: 未指定 | [EN] Unspecified
+             - COMMON_STATUS_NORMAL: 正常 | [EN] Normal
+             - COMMON_STATUS_DISABLED: 禁用 | [EN] Disabled
+          in: query
+          required: false
+          type: string
+          enum:
+            - COMMON_STATUS_UNSPECIFIED
+            - COMMON_STATUS_NORMAL
+            - COMMON_STATUS_DISABLED
+          default: COMMON_STATUS_UNSPECIFIED
+      tags:
+        - ProductManagement
+    post:
+      summary: 创建Product | Create Product
+      operationId: ProductService_ProductCreate
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/catalogProductCreateResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/catalogProductCreateRequest'
+      tags:
+        - ProductManagement
+  /v1/catalog/products/batch-delete:
+    post:
+      summary: 批量删除Product | Batch delete Product
+      operationId: ProductService_ProductBatchDelete
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/catalogProductBatchDeleteResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/catalogProductBatchDeleteRequest'
+      tags:
+        - ProductManagement
+  /v1/catalog/products/{product_id}:
+    get:
+      summary: 获取Product详情 | Get Product detail
+      operationId: ProductService_ProductGet
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/catalogProductGetResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: product_id
+          description: ProductID | [EN] Product ID
+          in: path
+          required: true
+          type: string
+      tags:
+        - ProductManagement
+    delete:
+      summary: 删除Product | Delete Product
+      operationId: ProductService_ProductDelete
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/catalogProductDeleteResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: product_id
+          description: ProductID | [EN] Product ID
+          in: path
+          required: true
+          type: string
+      tags:
+        - ProductManagement
+    put:
+      summary: 更新Product | Update Product
+      operationId: ProductService_ProductUpdate
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/catalogProductUpdateResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: product_id
+          description: ProductID | [EN] Product ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/ProductServiceProductUpdateBody'
+      tags:
+        - ProductManagement
+  /v1/catalog/products/{product_id}/status:
+    patch:
+      summary: 更新Product状态 | Update Product status
+      operationId: ProductService_ProductUpdateStatus
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/catalogProductUpdateStatusResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: product_id
+          description: ProductID | [EN] Product ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/ProductServiceProductUpdateStatusBody'
+      tags:
+        - ProductManagement
+definitions:
+  ProductServiceProductUpdateBody:
+    type: object
+    properties:
+      name:
+        type: string
+        title: 名称 | [EN] Name
+      remark:
+        type: string
+        title: 备注 | [EN] Remark
+      level:
+        $ref: '#/definitions/enumsProductLevel'
+        title: 等级 | [EN] Level
+      contact:
+        $ref: '#/definitions/commonProductContact'
+        title: 联系方式 | [EN] Contact
+      tags:
+        type: array
+        items:
+          type: string
+        title: 标签列表 | [EN] Tag list
+      update_tags:
+        type: boolean
+        title: 是否更新标签(true=用 tags 覆盖, false/null=不动) | [EN] Whether to replace tags
+    title: |-
+      更新Product请求。
+      [EN] Update Product request
+  ProductServiceProductUpdateStatusBody:
+    type: object
+    properties:
+      status:
+        $ref: '#/definitions/enumsCommonStatus'
+        title: 状态 | [EN] Status
+    title: |-
+      更新Product状态请求。
+      [EN] Update Product status request
+  catalogProductBatchDeleteRequest:
+    type: object
+    properties:
+      product_ids:
+        type: array
+        items:
+          type: string
+        title: ProductID列表 | [EN] Product ID list
+        maxItems: 100
+    title: |-
+      批量删除Product请求。
+      [EN] Batch delete Product request
+      批量操作走 POST + body，不用 DELETE：DELETE 带 body 在网关和代理上行为不一致。
+      [EN] Batch operations use POST with a body; DELETE with a body behaves inconsistently across proxies
+    required:
+      - product_ids
+  catalogProductBatchDeleteResponse:
+    type: object
+    properties:
+      results:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/commonBatchResult'
+        title: 逐条结果 | [EN] Per-item results
+    title: |-
+      批量删除Product响应。
+      [EN] Batch delete Product response
+  catalogProductCreateRequest:
+    type: object
+    properties:
+      tenant_id:
+        type: string
+        title: 租户ID | [EN] Tenant ID
+      name:
+        type: string
+        title: 名称 | [EN] Name
+        minLength: 2
+        maxLength: 64
+      code:
+        type: string
+        title: 编码 | [EN] Code
+        minLength: 2
+        maxLength: 32
+      type:
+        $ref: '#/definitions/enumsProductType'
+        title: 类型 | [EN] Type
+      level:
+        $ref: '#/definitions/enumsProductLevel'
+        title: 等级 | [EN] Level
+      contact:
+        $ref: '#/definitions/commonProductContact'
+        title: 联系方式 | [EN] Contact
+      tags:
+        type: array
+        items:
+          type: string
+        title: 标签列表 | [EN] Tag list
+      remark:
+        type: string
+        title: 备注 | [EN] Remark
+        maxLength: 255
+    title: |-
+      创建Product请求。
+      [EN] Create Product request
+      创建用裸类型 + validate:"required"，不要用 wrappers：创建场景没有「不传表示不改」的语义。
+      [EN] Create uses plain types with validate:"required"; wrappers are for partial updates only
+    required:
+      - tenant_id
+      - name
+      - code
+  catalogProductCreateResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonProductInfo'
+        title: Product信息 | [EN] Product info
+    title: |-
+      创建Product响应。
+      [EN] Create Product response
+  catalogProductDeleteResponse:
+    type: object
+    title: |-
+      删除Product响应。
+      [EN] Delete Product response
+  catalogProductGetResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonProductInfo'
+        title: Product信息 | [EN] Product info
+    title: |-
+      获取Product详情响应。
+      [EN] Get Product detail response
+  catalogProductListResponse:
+    type: object
+    properties:
+      page_response:
+        $ref: '#/definitions/commonPaging'
+        title: 分页响应 | [EN] Page response
+      infos:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/commonProductInfo'
+        title: Product信息列表 | [EN] Product info list
+    title: |-
+      Product列表响应。
+      [EN] Product list response
+  catalogProductUpdateResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonProductInfo'
+        title: Product信息 | [EN] Product info
+    title: |-
+      更新Product响应。
+      [EN] Update Product response
+  catalogProductUpdateStatusResponse:
+    type: object
+    title: |-
+      更新Product状态响应。
+      [EN] Update Product status response
+  commonBatchResult:
+    type: object
+    properties:
+      id:
+        type: string
+        title: ID | [EN] ID
+      success:
+        type: boolean
+        title: 是否成功 | [EN] Success
+      error_message:
+        type: string
+        title: 失败原因 | [EN] Error message
+    title: |-
+      批量操作结果。
+      [EN] Batch operation result
+      批量接口不要用「整体成功/失败」，按条返回才能让调用方精确重试。
+      [EN] Batch APIs report per-item results so callers can retry precisely
+  commonPaging:
+    type: object
+    properties:
+      page:
+        type: integer
+        format: int32
+        title: 当前页码 | [EN] Current page number
+        minimum: 1
+      size:
+        type: integer
+        format: int32
+        title: 每页条数（上限保护，防止一次拉全表） | [EN] Page size, capped to protect the backend
+        minimum: 1
+        maximum: 200
+      total:
+        type: integer
+        format: int32
+        title: 总条数（响应字段，请求 query 不继承必填） | [EN] Total count
+    title: |-
+      分页信息。
+      [EN] Paging information
+      请求与响应共用一个消息：请求里填 page/size，响应里回填 total
+      [EN] Shared by request and response: requests fill page/size, responses fill total
+  commonProductContact:
+    type: object
+    properties:
+      email:
+        type: string
+        format: email
+        title: 邮箱 | [EN] Email
+      phone:
+        type: string
+        title: 手机号 | [EN] Phone number
+      address:
+        type: string
+        title: 地址 | [EN] Address
+        maxLength: 255
+    title: |-
+      Product 联系方式。
+      [EN] Product contact
+      嵌套消息示例：把高内聚的字段收成一个子结构，比平铺 5 个字段更好演进。
+      [EN] Nested message example: group cohesive fields instead of flattening them
+  commonProductInfo:
+    type: object
+    properties:
+      id:
+        type: string
+        title: 主键ID | [EN] Primary key ID
+      tenant_id:
+        type: string
+        title: 租户ID | [EN] Tenant ID
+      platform_id:
+        type: string
+        title: 平台ID | [EN] Platform ID
+      region_id:
+        type: string
+        title: 地区ID | [EN] Region ID
+      name:
+        type: string
+        title: 名称 | [EN] Name
+      code:
+        type: string
+        title: 编码 | [EN] Code
+      type:
+        $ref: '#/definitions/enumsProductType'
+        title: 类型 | [EN] Type
+      level:
+        $ref: '#/definitions/enumsProductLevel'
+        title: 等级 | [EN] Level
+      status:
+        $ref: '#/definitions/enumsCommonStatus'
+        title: 状态 | [EN] Status
+      contact:
+        $ref: '#/definitions/commonProductContact'
+        title: 联系方式 | [EN] Contact
+      tags:
+        type: array
+        items:
+          type: string
+        title: 标签列表 | [EN] Tag list
+      extra:
+        type: object
+        additionalProperties:
+          type: string
+        title: 扩展字段 | [EN] Extra fields
+      created_at:
+        type: string
+        format: date-time
+        title: 创建时间 | [EN] Created at
+      updated_at:
+        type: string
+        format: date-time
+        title: 更新时间 | [EN] Updated at
+    title: |-
+      Product 信息。
+      [EN] Product information
+      作为查询、列表、创建响应的统一出参，避免三个接口三套字段。
+      [EN] One shape for get/list/create responses instead of three divergent ones
+  commonSorting:
+    type: object
+    properties:
+      field:
+        type: string
+        title: 排序字段 | [EN] Sort field
+      ascending:
+        type: boolean
+        title: 是否升序 | [EN] Whether ascending
+    title: |-
+      排序信息。
+      [EN] Sorting information
+  enumsCommonStatus:
+    type: string
+    enum:
+      - COMMON_STATUS_UNSPECIFIED
+      - COMMON_STATUS_NORMAL
+      - COMMON_STATUS_DISABLED
+    default: COMMON_STATUS_UNSPECIFIED
+    description: |-
+      - COMMON_STATUS_UNSPECIFIED: 未指定 | [EN] Unspecified
+       - COMMON_STATUS_NORMAL: 正常 | [EN] Normal
+       - COMMON_STATUS_DISABLED: 禁用 | [EN] Disabled
+    title: |-
+      通用状态。
+      [EN] Common status
+      绝大多数业务实体的启用/禁用都复用这一个枚举，不要在各模块里重复定义。
+      [EN] Reuse this enum for enable/disable across entities instead of redefining it per module
+  enumsProductLevel:
+    type: string
+    enum:
+      - PRODUCT_LEVEL_UNSPECIFIED
+      - PRODUCT_LEVEL_BRONZE
+      - PRODUCT_LEVEL_SILVER
+      - PRODUCT_LEVEL_GOLD
+    default: PRODUCT_LEVEL_UNSPECIFIED
+    description: |-
+      - PRODUCT_LEVEL_UNSPECIFIED: 未指定 | [EN] Unspecified
+       - PRODUCT_LEVEL_BRONZE: 青铜 | [EN] Bronze
+       - PRODUCT_LEVEL_SILVER: 白银 | [EN] Silver
+       - PRODUCT_LEVEL_GOLD: 黄金 | [EN] Gold
+    title: |-
+      Product 等级。
+      [EN] Product level
+  enumsProductType:
+    type: string
+    enum:
+      - PRODUCT_TYPE_UNSPECIFIED
+      - PRODUCT_TYPE_PERSONAL
+      - PRODUCT_TYPE_ORGANIZATION
+    default: PRODUCT_TYPE_UNSPECIFIED
+    description: |-
+      - PRODUCT_TYPE_UNSPECIFIED: 未指定 | [EN] Unspecified
+       - PRODUCT_TYPE_PERSONAL: 个人 | [EN] Personal
+       - PRODUCT_TYPE_ORGANIZATION: 组织 | [EN] Organization
+    title: |-
+      Product 类型。
+      [EN] Product type
+  protobufAny:
+    type: object
+    properties:
+      '@type':
+        type: string
+    additionalProperties: {}
+  rpcStatus:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      details:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/protobufAny'

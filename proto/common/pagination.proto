@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/common";
+option java_package = "com.kamalyes.kronos.api.common";
+package kronos.api.common;
+
+// 分页信息。
+// [EN] Paging information
+// 请求与响应共用一个消息：请求里填 page/size，响应里回填 total
+// [EN] Shared by request and response: requests fill page/size, responses fill total
+message Paging {
+  int32 page = 1;           // 当前页码 | [EN] Current page number  @inject_tag: validate:"omitempty,gte=1"
+  int32 size = 2;           // 每页条数（上限保护，防止一次拉全表） | [EN] Page size, capped to protect the backend  @inject_tag: validate:"omitempty,gte=1,lte=200"
+  int32 total = 3;          // 总条数（响应字段，请求 query 不继承必填） | [EN] Total count @inject_tag: swagger:"omitrequired"
+}
+
+// 排序信息。
+// [EN] Sorting information
+message Sorting {
+  string field = 1;         // 排序字段 | [EN] Sort field
+  bool ascending = 2;       // 是否升序 | [EN] Whether ascending
+}

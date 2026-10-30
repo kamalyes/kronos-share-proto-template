@@ -1,0 +1,231 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "proto/common/common.proto";
+import "proto/enums/enums.proto";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/catalog";
+option java_package = "com.kamalyes.kronos.api.catalog";
+package kronos.api.catalog;
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Kronos Product Service"
+    description: "Product 管理服务（完整 CRUD 示例：POST/GET/PUT/PATCH/DELETE 全覆盖） | Product management service (full CRUD example covering POST/GET/PUT/PATCH/DELETE)"
+    version: "1.0.0"
+  }
+  tags: [
+    {
+      name: "ProductManagement"
+      description: "Product 管理 | Product Management"
+    }
+  ]
+};
+
+//===========================  Product 消息定义 | Product Message Definitions  ==========================//
+
+// 创建Product请求。
+// [EN] Create Product request
+// 创建用裸类型 + validate:"required"，不要用 wrappers：创建场景没有「不传表示不改」的语义。
+// [EN] Create uses plain types with validate:"required"; wrappers are for partial updates only
+message ProductCreateRequest {
+  string tenant_id = 1;                                  // 租户ID | [EN] Tenant ID @inject_tag: validate:"required,tenant_id"
+  string name = 2;                                       // 名称 | [EN] Name @inject_tag: validate:"required,min=2,max=64"
+  string code = 3;                                       // 编码 | [EN] Code @inject_tag: validate:"required,min=2,max=32"
+  enums.ProductType type = 4;     // 类型 | [EN] Type
+  enums.ProductLevel level = 5;   // 等级 | [EN] Level
+  common.ProductContact contact = 6; // 联系方式 | [EN] Contact
+  repeated string tags = 7;                              // 标签列表 | [EN] Tag list
+  string remark = 8;                                     // 备注 | [EN] Remark  @inject_tag: validate:"omitempty,max=255"
+}
+
+// 创建Product响应。
+// [EN] Create Product response
+message ProductCreateResponse {
+  common.ProductInfo info = 1;    // Product信息 | [EN] Product info
+}
+
+// 获取Product详情请求。
+// [EN] Get Product detail request
+message ProductGetRequest {
+  string product_id = 1;           // ProductID | [EN] Product ID @inject_tag: validate:"required"
+}
+
+// 获取Product详情响应。
+// [EN] Get Product detail response
+message ProductGetResponse {
+  common.ProductInfo info = 1;    // Product信息 | [EN] Product info
+}
+
+// Product列表请求。
+// [EN] Product list request
+// 过滤条件用 wrappers：区分「不过滤」和「过滤空值」。
+// [EN] Filters use wrappers so "no filter" differs from "filter by empty value"
+message ProductListRequest {
+  common.Paging page_request = 1;                        // 分页请求 | [EN] Page request @inject_tag: validate:"required"
+  common.Sorting sort = 2;                               // 排序 | [EN] Sorting
+  google.protobuf.StringValue keyword = 3;               // 搜索关键词（名称、编码） | [EN] Search keyword (name, code)
+  google.protobuf.StringValue tenant_id = 4;             // 租户ID | [EN] Tenant ID
+  enums.ProductType type = 5;     // 类型 | [EN] Type
+  enums.CommonStatus status = 6;                         // 状态 | [EN] Status
+}
+
+// Product列表响应。
+// [EN] Product list response
+message ProductListResponse {
+  common.Paging page_response = 1;                       // 分页响应 | [EN] Page response
+  repeated common.ProductInfo infos = 2; // Product信息列表 | [EN] Product info list
+}
+
+// 更新Product请求。
+// [EN] Update Product request
+message ProductUpdateRequest {
+  string product_id = 1;           // ProductID | [EN] Product ID @inject_tag: validate:"required"
+  google.protobuf.StringValue name = 2;                  // 名称 | [EN] Name
+  google.protobuf.StringValue remark = 3;                // 备注 | [EN] Remark
+  enums.ProductLevel level = 4;   // 等级 | [EN] Level
+  common.ProductContact contact = 5; // 联系方式 | [EN] Contact
+  repeated string tags = 6;                              // 标签列表 | [EN] Tag list
+  google.protobuf.BoolValue update_tags = 7;             // 是否更新标签(true=用 tags 覆盖, false/null=不动) | [EN] Whether to replace tags
+}
+
+// 更新Product响应。
+// [EN] Update Product response
+message ProductUpdateResponse {
+  common.ProductInfo info = 1;    // Product信息 | [EN] Product info
+}
+
+// 更新Product状态请求。
+// [EN] Update Product status request
+message ProductUpdateStatusRequest {
+  string product_id = 1;           // ProductID | [EN] Product ID @inject_tag: validate:"required"
+  enums.CommonStatus status = 2;                         // 状态 | [EN] Status @inject_tag: validate:"required"
+}
+
+// 更新Product状态响应。
+// [EN] Update Product status response
+message ProductUpdateStatusResponse {}
+
+// 删除Product请求。
+// [EN] Delete Product request
+message ProductDeleteRequest {
+  string product_id = 1;           // ProductID | [EN] Product ID @inject_tag: validate:"required"
+}
+
+// 删除Product响应。
+// [EN] Delete Product response
+message ProductDeleteResponse {}
+
+// 批量删除Product请求。
+// [EN] Batch delete Product request
+// 批量操作走 POST + body，不用 DELETE：DELETE 带 body 在网关和代理上行为不一致。
+// [EN] Batch operations use POST with a body; DELETE with a body behaves inconsistently across proxies
+message ProductBatchDeleteRequest {
+  repeated string product_ids = 1; // ProductID列表 | [EN] Product ID list @inject_tag: validate:"required,max=100"
+}
+
+// 批量删除Product响应。
+// [EN] Batch delete Product response
+message ProductBatchDeleteResponse {
+  repeated common.BatchResult results = 1;               // 逐条结果 | [EN] Per-item results
+}
+
+//===========================  服务定义 | Service Definition  ==========================//
+
+// Product 管理服务。
+// [EN] Product management service
+service ProductService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    description: "Product 管理服务（完整 CRUD 示例） | Product management service (full CRUD example)"
+  };
+
+  // 创建Product
+  // [EN] Create Product
+  rpc ProductCreate(ProductCreateRequest) returns (ProductCreateResponse) {
+    option (google.api.http) = {
+      post: "/v1/catalog/products"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "创建Product | Create Product"
+      tags: "ProductManagement"
+    };
+  }
+
+  // 获取Product详情。
+  // [EN] Get Product detail
+  rpc ProductGet(ProductGetRequest) returns (ProductGetResponse) {
+    option (google.api.http) = {
+      get: "/v1/catalog/products/{product_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "获取Product详情 | Get Product detail"
+      tags: "ProductManagement"
+    };
+  }
+
+  // Product列表。
+  // [EN] Product list
+  rpc ProductList(ProductListRequest) returns (ProductListResponse) {
+    option (google.api.http) = {
+      get: "/v1/catalog/products"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Product列表 | Product list"
+      tags: "ProductManagement"
+    };
+  }
+
+  // 更新Product
+  // [EN] Update Product
+  rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse) {
+    option (google.api.http) = {
+      put: "/v1/catalog/products/{product_id}"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "更新Product | Update Product"
+      tags: "ProductManagement"
+    };
+  }
+
+  // 更新Product状态（局部更新）。
+  // [EN] Update Product status (partial update)
+  rpc ProductUpdateStatus(ProductUpdateStatusRequest) returns (ProductUpdateStatusResponse) {
+    option (google.api.http) = {
+      patch: "/v1/catalog/products/{product_id}/status"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "更新Product状态 | Update Product status"
+      tags: "ProductManagement"
+    };
+  }
+
+  // 删除Product
+  // [EN] Delete Product
+  rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse) {
+    option (google.api.http) = {
+      delete: "/v1/catalog/products/{product_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "删除Product | Delete Product"
+      tags: "ProductManagement"
+    };
+  }
+
+  // 批量删除Product
+  // [EN] Batch delete Product
+  rpc ProductBatchDelete(ProductBatchDeleteRequest) returns (ProductBatchDeleteResponse) {
+    option (google.api.http) = {
+      post: "/v1/catalog/products/batch-delete"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "批量删除Product | Batch delete Product"
+      tags: "ProductManagement"
+    };
+  }
+}

@@ -1,0 +1,442 @@
+swagger: "2.0"
+info:
+  title: Kronos Warehouse Service
+  description: Warehouse 管理服务（第二个 CRUD 示例，演示跨模块复用 common/enums） | Warehouse management service (second CRUD example, shows cross-module reuse of common/enums)
+  version: 1.0.0
+tags:
+  - name: WarehouseManagement
+    description: Warehouse 管理 | Warehouse Management
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /v1/inventory/warehouses:
+    get:
+      summary: Warehouse列表 | Warehouse list
+      operationId: WarehouseService_WarehouseList
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/inventoryWarehouseListResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page_request.page
+          description: 当前页码 | [EN] Current page number
+          in: query
+          required: false
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_request.size
+          description: 每页条数（上限保护，防止一次拉全表） | [EN] Page size, capped to protect the backend
+          in: query
+          required: false
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 200
+        - name: page_request.total
+          description: 总条数（响应字段，请求 query 不继承必填） | [EN] Total count
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: sort.field
+          description: 排序字段 | [EN] Sort field
+          in: query
+          required: false
+          type: string
+        - name: sort.ascending
+          description: 是否升序 | [EN] Whether ascending
+          in: query
+          required: false
+          type: boolean
+        - name: keyword
+          description: 搜索关键词 | [EN] Search keyword
+          in: query
+          required: false
+          type: string
+        - name: category
+          description: |-
+            分类 | [EN] Category
+
+             - WAREHOUSE_CATEGORY_UNSPECIFIED: 未指定 | [EN] Unspecified
+             - WAREHOUSE_CATEGORY_STANDARD: 标准 | [EN] Standard
+             - WAREHOUSE_CATEGORY_PREMIUM: 高级 | [EN] Premium
+          in: query
+          required: false
+          type: string
+          enum:
+            - WAREHOUSE_CATEGORY_UNSPECIFIED
+            - WAREHOUSE_CATEGORY_STANDARD
+            - WAREHOUSE_CATEGORY_PREMIUM
+          default: WAREHOUSE_CATEGORY_UNSPECIFIED
+        - name: status
+          description: |-
+            状态 | [EN] Status
+
+             - COMMON_STATUS_UNSPECIFIED: 未指定 | [EN] Unspecified
+             - COMMON_STATUS_NORMAL: 正常 | [EN] Normal
+             - COMMON_STATUS_DISABLED: 禁用 | [EN] Disabled
+          in: query
+          required: false
+          type: string
+          enum:
+            - COMMON_STATUS_UNSPECIFIED
+            - COMMON_STATUS_NORMAL
+            - COMMON_STATUS_DISABLED
+          default: COMMON_STATUS_UNSPECIFIED
+      tags:
+        - WarehouseManagement
+    post:
+      summary: 创建Warehouse | Create Warehouse
+      operationId: WarehouseService_WarehouseCreate
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/inventoryWarehouseCreateResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/inventoryWarehouseCreateRequest'
+      tags:
+        - WarehouseManagement
+  /v1/inventory/warehouses/{warehouse_id}:
+    get:
+      summary: 获取Warehouse详情 | Get Warehouse detail
+      operationId: WarehouseService_WarehouseGet
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/inventoryWarehouseGetResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: warehouse_id
+          description: WarehouseID | [EN] Warehouse ID
+          in: path
+          required: true
+          type: string
+      tags:
+        - WarehouseManagement
+    delete:
+      summary: 删除Warehouse | Delete Warehouse
+      operationId: WarehouseService_WarehouseDelete
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/commonGeneralEmptyResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: warehouse_id
+          description: WarehouseID | [EN] Warehouse ID
+          in: path
+          required: true
+          type: string
+      tags:
+        - WarehouseManagement
+    put:
+      summary: 更新Warehouse | Update Warehouse
+      operationId: WarehouseService_WarehouseUpdate
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/inventoryWarehouseUpdateResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: warehouse_id
+          description: WarehouseID | [EN] Warehouse ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/WarehouseServiceWarehouseUpdateBody'
+      tags:
+        - WarehouseManagement
+  /v1/inventory/warehouses/{warehouse_id}/status:
+    patch:
+      summary: 启停Warehouse | Toggle Warehouse
+      operationId: WarehouseService_WarehouseUpdateStatus
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/commonGeneralEmptyResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: warehouse_id
+          description: WarehouseID | [EN] Warehouse ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/WarehouseServiceWarehouseUpdateStatusBody'
+      tags:
+        - WarehouseManagement
+definitions:
+  WarehouseServiceWarehouseUpdateBody:
+    type: object
+    properties:
+      name:
+        type: string
+        title: 名称 | [EN] Name
+      icon_url:
+        type: string
+        title: 图标地址 | [EN] Icon URL
+      sort_order:
+        type: integer
+        format: int32
+        title: 排序序号 | [EN] Sort order
+      category:
+        $ref: '#/definitions/enumsWarehouseCategory'
+        title: 分类 | [EN] Category
+    title: |-
+      更新Warehouse请求。
+      [EN] Update Warehouse request
+  WarehouseServiceWarehouseUpdateStatusBody:
+    type: object
+    properties:
+      status:
+        $ref: '#/definitions/enumsCommonStatus'
+        title: 状态 | [EN] Status
+    title: |-
+      启停Warehouse请求。
+      [EN] Toggle Warehouse request
+  commonGeneralEmptyResponse:
+    type: object
+    title: |-
+      通用空响应。
+      [EN] General empty response
+  commonPaging:
+    type: object
+    properties:
+      page:
+        type: integer
+        format: int32
+        title: 当前页码 | [EN] Current page number
+        minimum: 1
+      size:
+        type: integer
+        format: int32
+        title: 每页条数（上限保护，防止一次拉全表） | [EN] Page size, capped to protect the backend
+        minimum: 1
+        maximum: 200
+      total:
+        type: integer
+        format: int32
+        title: 总条数（响应字段，请求 query 不继承必填） | [EN] Total count
+    title: |-
+      分页信息。
+      [EN] Paging information
+      请求与响应共用一个消息：请求里填 page/size，响应里回填 total
+      [EN] Shared by request and response: requests fill page/size, responses fill total
+  commonSorting:
+    type: object
+    properties:
+      field:
+        type: string
+        title: 排序字段 | [EN] Sort field
+      ascending:
+        type: boolean
+        title: 是否升序 | [EN] Whether ascending
+    title: |-
+      排序信息。
+      [EN] Sorting information
+  commonWarehouseInfo:
+    type: object
+    properties:
+      id:
+        type: string
+        title: 主键ID | [EN] Primary key ID
+      tenant_id:
+        type: string
+        title: 租户ID | [EN] Tenant ID
+      name:
+        type: string
+        title: 名称 | [EN] Name
+      code:
+        type: string
+        title: 编码 | [EN] Code
+      icon_url:
+        type: string
+        title: 图标地址 | [EN] Icon URL
+      category:
+        $ref: '#/definitions/enumsWarehouseCategory'
+        title: 分类 | [EN] Category
+      status:
+        $ref: '#/definitions/enumsCommonStatus'
+        title: 状态 | [EN] Status
+      sort_order:
+        type: integer
+        format: int32
+        title: 排序序号 | [EN] Sort order
+      created_at:
+        type: string
+        format: date-time
+        title: 创建时间 | [EN] Created at
+      updated_at:
+        type: string
+        format: date-time
+        title: 更新时间 | [EN] Updated at
+    title: |-
+      Warehouse 信息。
+      [EN] Warehouse information
+  enumsCommonStatus:
+    type: string
+    enum:
+      - COMMON_STATUS_UNSPECIFIED
+      - COMMON_STATUS_NORMAL
+      - COMMON_STATUS_DISABLED
+    default: COMMON_STATUS_UNSPECIFIED
+    description: |-
+      - COMMON_STATUS_UNSPECIFIED: 未指定 | [EN] Unspecified
+       - COMMON_STATUS_NORMAL: 正常 | [EN] Normal
+       - COMMON_STATUS_DISABLED: 禁用 | [EN] Disabled
+    title: |-
+      通用状态。
+      [EN] Common status
+      绝大多数业务实体的启用/禁用都复用这一个枚举，不要在各模块里重复定义。
+      [EN] Reuse this enum for enable/disable across entities instead of redefining it per module
+  enumsWarehouseCategory:
+    type: string
+    enum:
+      - WAREHOUSE_CATEGORY_UNSPECIFIED
+      - WAREHOUSE_CATEGORY_STANDARD
+      - WAREHOUSE_CATEGORY_PREMIUM
+    default: WAREHOUSE_CATEGORY_UNSPECIFIED
+    description: |-
+      - WAREHOUSE_CATEGORY_UNSPECIFIED: 未指定 | [EN] Unspecified
+       - WAREHOUSE_CATEGORY_STANDARD: 标准 | [EN] Standard
+       - WAREHOUSE_CATEGORY_PREMIUM: 高级 | [EN] Premium
+    title: |-
+      Warehouse 分类。
+      [EN] Warehouse category
+  inventoryWarehouseCreateRequest:
+    type: object
+    properties:
+      tenant_id:
+        type: string
+        title: 租户ID | [EN] Tenant ID
+      name:
+        type: string
+        title: 名称 | [EN] Name
+        minLength: 2
+        maxLength: 64
+      code:
+        type: string
+        title: 编码 | [EN] Code
+        minLength: 2
+        maxLength: 32
+      icon_url:
+        type: string
+        format: uri
+        title: 图标地址 | [EN] Icon URL
+      category:
+        $ref: '#/definitions/enumsWarehouseCategory'
+        title: 分类 | [EN] Category
+      sort_order:
+        type: integer
+        format: int32
+        title: 排序序号 | [EN] Sort order
+        minimum: 0
+        maximum: 9999
+    title: |-
+      创建Warehouse请求。
+      [EN] Create Warehouse request
+    required:
+      - tenant_id
+      - name
+      - code
+  inventoryWarehouseCreateResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonWarehouseInfo'
+        title: Warehouse信息 | [EN] Warehouse info
+    title: |-
+      创建Warehouse响应。
+      [EN] Create Warehouse response
+  inventoryWarehouseGetResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonWarehouseInfo'
+        title: Warehouse信息 | [EN] Warehouse info
+    title: |-
+      获取Warehouse详情响应。
+      [EN] Get Warehouse detail response
+  inventoryWarehouseListResponse:
+    type: object
+    properties:
+      page_response:
+        $ref: '#/definitions/commonPaging'
+        title: 分页响应 | [EN] Page response
+      infos:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/commonWarehouseInfo'
+        title: Warehouse信息列表 | [EN] Warehouse info list
+    title: |-
+      Warehouse列表响应。
+      [EN] Warehouse list response
+  inventoryWarehouseUpdateResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonWarehouseInfo'
+        title: Warehouse信息 | [EN] Warehouse info
+    title: |-
+      更新Warehouse响应。
+      [EN] Update Warehouse response
+  protobufAny:
+    type: object
+    properties:
+      '@type':
+        type: string
+    additionalProperties: {}
+  rpcStatus:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      details:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/protobufAny'

@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "proto/common/common.proto";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/key";
+option java_package = "com.kamalyes.kronos.api.key";
+package kronos.api.key;
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Kronos Id Block Service"
+    description: "ID 号段分发服务：由一处集中发号，调用方一次申领一整段后在本地发放，避免每个实例各自决定 ID | Id block allocation service: one place issues ids, callers claim a whole block and serve it locally instead of each instance deciding ids for itself"
+    version: "1.0.0"
+  }
+  tags: [
+    {
+      name: "IdBlockManagement"
+      description: "ID 号段分发 | Id Block Allocation"
+    }
+  ]
+};
+
+//===========================  这个服务解决什么问题 | What this service solves  ==========================//
+//
+// 每个实例自己生成 ID（Snowflake 之类）要求实例有一个确定且唯一的 worker id。
+// 在 Deployment 下这个前提常常不成立：Pod 名带随机后缀、提取不出序号，
+// 退化成按主机名哈希取模，而槽位通常只有几十个。于是副本一多就会有两个 Pod
+// 拿到同一个 worker id，它们各有独立的序列计数器，同一毫秒内发出相同的 ID。
+// 症状是偶发主键冲突——与流量相关、重启后碰撞组合还会变，极难排查。
+//
+// 由一处集中发号就没有这个问题：唯一性只取决于中心的序列，
+// 与实例数、Pod 名、worker id 全都无关。
+//
+// 为什么是「号段」而不是「一次一个」：
+//   每条记录一次远程调用会给每次插入加一个网络往返，让本服务成为写路径上的
+//   硬依赖，并把所有服务所有实例的写流量压成一个单点热点。
+//   一次申领一整段、之后从本地缓冲发放，稳态下每 count 条记录才有一次调用。
+//
+// 调用方必须接受 ID 有空洞：实例重启时缓冲里没用掉的号段直接丢弃。
+// 这对代理主键没有影响（只要唯一，不需要连续），但不要把这种 ID 直接当
+// 「订单号」给用户看——用户会从空洞里推断业务量，也会因为号跳了来问。
+//
+// [EN] Per-instance id generation such as Snowflake requires each instance to have a unique,
+// deterministic worker id, and under a Deployment that premise often fails: pod names carry a
+// random suffix with no ordinal to extract, so the worker id degrades to a hash of the hostname
+// modulo a small number of slots, and with a few replicas two pods share one. Each then keeps
+// its own sequence counter and they emit identical ids within the same millisecond, surfacing
+// as intermittent primary-key conflicts that correlate with traffic and change shape on every
+// restart. Issuing from one place removes the problem entirely, since uniqueness depends only
+// on the central sequence and not on instance count, pod name or worker id. Blocks rather than
+// single ids, because one call per row adds a round trip to every insert, makes this service a
+// hard dependency of the write path and concentrates every instance's write traffic onto one
+// hot spot; a claimed block is served from a local buffer, so the steady state is one call per
+// count rows. Callers must accept gaps, since a restart discards the unused remainder, which is
+// irrelevant for a surrogate key but makes such an id unsuitable as a user-visible order
+// number, where the gaps reveal volume and prompt questions about the jumps.
+
+//===========================  IdBlock 消息定义 | IdBlock Message Definitions  ==========================//
+
+// 申领 ID 号段请求。
+// [EN] Allocate id block request
+message IdBlockAllocateRequest {
+  // 序列命名空间，隔离不同服务/实体的号段。
+  //
+  // 必填且不要图省事复用：命名空间相同就是共用同一个序列，两个调用方的号段会交错。
+  // 不会重复（序列是同一个），但一方的写入量会推高另一方的号，
+  // 而且谁都查不出为什么——建议用「服务名:实体名」。
+  //
+  // [EN] Required, and not to be reused for convenience: an identical namespace means one
+  // shared sequence, so two callers' blocks interleave. They do not collide, since it is the
+  // same sequence, but one caller's volume pushes the other's numbers along and nobody can tell
+  // why. A service-plus-entity name is the recommended form.
+  string namespace = 1;              // 序列命名空间 | [EN] Sequence namespace @inject_tag: validate:"required,min=2,max=64"
+
+  // 申领数量。
+  //
+  // 有上限不是为了限流，是为了防住两件事：一次申领百万个会把响应体撑爆，
+  // 而且那一段里绝大部分会随进程退出丢掉，等于白白跳号。
+  // 调用方该做的是按消费速率调小号段并提高申领频率，不是一次要一大把。
+  //
+  // [EN] The cap is not rate limiting: claiming a million at once would blow up the response
+  // body, and most of that block would be discarded at exit, burning numbers for nothing. The
+  // right adjustment is a smaller block claimed more often, matched to the consumption rate.
+  int32 count = 2;                   // 申领数量 | [EN] How many ids to claim @inject_tag: validate:"required,gte=1,lte=1000"
+}
+
+// 申领 ID 号段响应。
+// [EN] Allocate id block response
+message IdBlockAllocateResponse {
+  // 已分配的 ID，长度等于请求的 count。
+  //
+  // 返回具体 ID 而不是「起止区间 + 格式规则」：返回区间更省带宽，但格式规则
+  // 就落到了每个调用方身上，各自实现迟早会不一致，而不一致的表现是
+  // 「同一个序列在不同服务里长得不一样」，事后极难统一。
+  //
+  // [EN] Concrete ids rather than a range plus a formatting rule: a range saves bandwidth but
+  // moves the formatting into every caller, where the implementations eventually diverge and
+  // the same sequence ends up looking different in different services, which is very hard to
+  // reconcile afterwards.
+  repeated string ids = 1;           // 已分配的 ID 列表 | [EN] Allocated ids
+  string namespace = 2;              // 回显命名空间，便于调用方自检 | [EN] Echoed namespace for the caller to verify
+}
+
+//===========================  服务定义 | Service Definition  ==========================//
+
+// ID 号段分发服务
+// [EN] Id block allocation service
+service IdBlockService {
+  // 申领一段 ID
+  //
+  // 这个接口不是幂等的：重试会拿到新的一段，上一段就此作废（跳号）。
+  // 不做幂等是有意的——要幂等就得给每次申领一个去重键并把结果持久化，
+  // 而 ID 本来就允许有空洞，为此引入一张去重表不划算。
+  // 调用方重试时只要接受跳号即可，不要试图「找回」上一次的号段。
+  //
+  // [EN] Deliberately not idempotent: a retry yields a new block and abandons the previous one,
+  // leaving a gap. Making it idempotent would require a deduplication key per claim and
+  // persisting the result, which is not worth a dedicated table when gaps are acceptable by
+  // design. A retrying caller simply accepts the gap and must not try to recover the old block.
+  rpc IdBlockAllocate(IdBlockAllocateRequest) returns (IdBlockAllocateResponse) {
+    option (google.api.http) = {
+      post: "/v1/id-blocks/allocate"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "申领 ID 号段 | Allocate an id block"
+      description: "从指定命名空间的中心序列取出 count 个 ID，调用方在本地缓冲后逐个发放 | Takes count ids from the central sequence of the given namespace for the caller to buffer and serve locally"
+      tags: "IdBlockManagement"
+    };
+  }
+}

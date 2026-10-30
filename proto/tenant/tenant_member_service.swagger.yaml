@@ -1,0 +1,419 @@
+swagger: "2.0"
+info:
+  title: Kronos Tenant Member Service
+  description: Tenant 成员管理服务（子资源 + 动作型 + 批量） | Tenant member management (sub-resources + actions + batch)
+  version: 1.0.0
+tags:
+  - name: TenantMemberManagement
+    description: Tenant 成员管理 | Tenant Member Management
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /v1/tenant/tenants/{tenant_id}/members:
+    get:
+      summary: 成员列表 | Member list
+      operationId: TenantMemberService_TenantMemberList
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantMemberListResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: 所属TenantID | [EN] Owning Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: page_request.page
+          description: 当前页码 | [EN] Current page number
+          in: query
+          required: false
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_request.size
+          description: 每页条数（上限保护，防止一次拉全表） | [EN] Page size, capped to protect the backend
+          in: query
+          required: false
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 200
+        - name: page_request.total
+          description: 总条数（响应字段，请求 query 不继承必填） | [EN] Total count
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: role
+          description: |-
+            按角色过滤 | [EN] Filter by role
+
+             - TENANT_MEMBER_ROLE_UNSPECIFIED: 未指定 | [EN] Unspecified
+             - TENANT_MEMBER_ROLE_OWNER: 所有者 | [EN] Owner
+             - TENANT_MEMBER_ROLE_ADMIN: 管理员 | [EN] Admin
+             - TENANT_MEMBER_ROLE_VIEWER: 只读 | [EN] Viewer
+          in: query
+          required: false
+          type: string
+          enum:
+            - TENANT_MEMBER_ROLE_UNSPECIFIED
+            - TENANT_MEMBER_ROLE_OWNER
+            - TENANT_MEMBER_ROLE_ADMIN
+            - TENANT_MEMBER_ROLE_VIEWER
+          default: TENANT_MEMBER_ROLE_UNSPECIFIED
+        - name: status
+          description: |-
+            按状态过滤 | [EN] Filter by status
+
+             - COMMON_STATUS_UNSPECIFIED: 未指定 | [EN] Unspecified
+             - COMMON_STATUS_NORMAL: 正常 | [EN] Normal
+             - COMMON_STATUS_DISABLED: 禁用 | [EN] Disabled
+          in: query
+          required: false
+          type: string
+          enum:
+            - COMMON_STATUS_UNSPECIFIED
+            - COMMON_STATUS_NORMAL
+            - COMMON_STATUS_DISABLED
+          default: COMMON_STATUS_UNSPECIFIED
+      tags:
+        - TenantMemberManagement
+    post:
+      summary: 添加成员 | Add member
+      operationId: TenantMemberService_TenantMemberAdd
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantMemberAddResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: 所属TenantID | [EN] Owning Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/TenantMemberServiceTenantMemberAddBody'
+      tags:
+        - TenantMemberManagement
+  /v1/tenant/tenants/{tenant_id}/members/batch-invite:
+    post:
+      summary: 批量邀请成员 | Batch invite members
+      operationId: TenantMemberService_TenantMemberBatchInvite
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantMemberBatchInviteResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: 所属TenantID | [EN] Owning Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/TenantMemberServiceTenantMemberBatchInviteBody'
+      tags:
+        - TenantMemberManagement
+  /v1/tenant/tenants/{tenant_id}/members/{member_id}:
+    delete:
+      summary: 移除成员 | Remove member
+      operationId: TenantMemberService_TenantMemberRemove
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/commonGeneralEmptyResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: 所属TenantID | [EN] Owning Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: member_id
+          description: 成员ID | [EN] Member ID
+          in: path
+          required: true
+          type: string
+      tags:
+        - TenantMemberManagement
+  /v1/tenant/tenants/{tenant_id}/members/{member_id}/roles:
+    put:
+      summary: 覆盖成员角色 | Replace member roles
+      operationId: TenantMemberService_TenantMemberRoleReplace
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantMemberRoleReplaceResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: 所属TenantID | [EN] Owning Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: member_id
+          description: 成员ID | [EN] Member ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/TenantMemberServiceTenantMemberRoleReplaceBody'
+      tags:
+        - TenantMemberManagement
+definitions:
+  TenantMemberServiceTenantMemberAddBody:
+    type: object
+    properties:
+      user_id:
+        type: string
+        title: 用户ID | [EN] User ID
+      email:
+        type: string
+        title: 邮箱 | [EN] Email
+      roles:
+        type: array
+        items:
+          $ref: '#/definitions/enumsTenantMemberRole'
+        title: 初始角色 | [EN] Initial roles
+    title: |-
+      添加成员请求
+      [EN] Add member request
+  TenantMemberServiceTenantMemberBatchInviteBody:
+    type: object
+    properties:
+      emails:
+        type: array
+        items:
+          type: string
+        title: 邮箱列表 | [EN] Email list
+      roles:
+        type: array
+        items:
+          $ref: '#/definitions/enumsTenantMemberRole'
+        title: 统一赋予的角色 | [EN] Roles granted to all invitees
+    title: |-
+      批量邀请成员请求
+      [EN] Batch invite members request
+  TenantMemberServiceTenantMemberRoleReplaceBody:
+    type: object
+    properties:
+      roles:
+        type: array
+        items:
+          $ref: '#/definitions/enumsTenantMemberRole'
+        title: 覆盖后的角色集合 | [EN] The resulting role set
+    title: |-
+      覆盖成员角色请求
+      [EN] Replace member roles request
+      用 PUT 而不是 PATCH：语义是「把角色集合整体替换成这一份」，
+      增量加减角色应该是另外两个动作型接口，不要用同一个接口的可选字段去表达两种语义
+      [EN] PUT rather than PATCH: the semantics are "replace the whole role set with this one".
+      Incremental add/remove belong to separate action endpoints instead of optional fields
+      on one endpoint expressing two different behaviours
+  commonBatchResult:
+    type: object
+    properties:
+      id:
+        type: string
+        title: ID | [EN] ID
+      success:
+        type: boolean
+        title: 是否成功 | [EN] Success
+      error_message:
+        type: string
+        title: 失败原因 | [EN] Error message
+    title: |-
+      批量操作结果。
+      [EN] Batch operation result
+      批量接口不要用「整体成功/失败」，按条返回才能让调用方精确重试。
+      [EN] Batch APIs report per-item results so callers can retry precisely
+  commonGeneralEmptyResponse:
+    type: object
+    title: |-
+      通用空响应。
+      [EN] General empty response
+  commonPaging:
+    type: object
+    properties:
+      page:
+        type: integer
+        format: int32
+        title: 当前页码 | [EN] Current page number
+        minimum: 1
+      size:
+        type: integer
+        format: int32
+        title: 每页条数（上限保护，防止一次拉全表） | [EN] Page size, capped to protect the backend
+        minimum: 1
+        maximum: 200
+      total:
+        type: integer
+        format: int32
+        title: 总条数（响应字段，请求 query 不继承必填） | [EN] Total count
+    title: |-
+      分页信息。
+      [EN] Paging information
+      请求与响应共用一个消息：请求里填 page/size，响应里回填 total
+      [EN] Shared by request and response: requests fill page/size, responses fill total
+  commonTenantMemberInfo:
+    type: object
+    properties:
+      id:
+        type: string
+        title: 成员ID | [EN] Member ID
+      tenant_id:
+        type: string
+        title: 所属TenantID | [EN] Owning Tenant ID
+      user_id:
+        type: string
+        title: 用户ID | [EN] User ID
+      display_name:
+        type: string
+        title: 显示名 | [EN] Display name
+      email:
+        type: string
+        title: 邮箱 | [EN] Email
+      roles:
+        type: array
+        items:
+          $ref: '#/definitions/enumsTenantMemberRole'
+        title: 角色列表 | [EN] Role list
+      status:
+        $ref: '#/definitions/enumsCommonStatus'
+        title: 状态 | [EN] Status
+      joined_at:
+        type: string
+        format: date-time
+        title: 加入时间 | [EN] Joined at
+    title: |-
+      成员信息
+      [EN] Member information
+  enumsCommonStatus:
+    type: string
+    enum:
+      - COMMON_STATUS_UNSPECIFIED
+      - COMMON_STATUS_NORMAL
+      - COMMON_STATUS_DISABLED
+    default: COMMON_STATUS_UNSPECIFIED
+    description: |-
+      - COMMON_STATUS_UNSPECIFIED: 未指定 | [EN] Unspecified
+       - COMMON_STATUS_NORMAL: 正常 | [EN] Normal
+       - COMMON_STATUS_DISABLED: 禁用 | [EN] Disabled
+    title: |-
+      通用状态。
+      [EN] Common status
+      绝大多数业务实体的启用/禁用都复用这一个枚举，不要在各模块里重复定义。
+      [EN] Reuse this enum for enable/disable across entities instead of redefining it per module
+  enumsTenantMemberRole:
+    type: string
+    enum:
+      - TENANT_MEMBER_ROLE_UNSPECIFIED
+      - TENANT_MEMBER_ROLE_OWNER
+      - TENANT_MEMBER_ROLE_ADMIN
+      - TENANT_MEMBER_ROLE_VIEWER
+    default: TENANT_MEMBER_ROLE_UNSPECIFIED
+    description: |-
+      - TENANT_MEMBER_ROLE_UNSPECIFIED: 未指定 | [EN] Unspecified
+       - TENANT_MEMBER_ROLE_OWNER: 所有者 | [EN] Owner
+       - TENANT_MEMBER_ROLE_ADMIN: 管理员 | [EN] Admin
+       - TENANT_MEMBER_ROLE_VIEWER: 只读 | [EN] Viewer
+    title: |-
+      成员角色
+      [EN] Member role
+  protobufAny:
+    type: object
+    properties:
+      '@type':
+        type: string
+    additionalProperties: {}
+  rpcStatus:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      details:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/protobufAny'
+  tenantTenantMemberAddResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonTenantMemberInfo'
+        title: 成员信息 | [EN] Member info
+    title: |-
+      添加成员响应
+      [EN] Add member response
+  tenantTenantMemberBatchInviteResponse:
+    type: object
+    properties:
+      results:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/commonBatchResult'
+        title: 逐条结果 | [EN] Per-item results
+    title: |-
+      批量邀请成员响应
+      [EN] Batch invite members response
+  tenantTenantMemberListResponse:
+    type: object
+    properties:
+      page_response:
+        $ref: '#/definitions/commonPaging'
+        title: 分页响应 | [EN] Page response
+      infos:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/commonTenantMemberInfo'
+        title: 成员列表 | [EN] Member list
+    title: |-
+      成员列表响应
+      [EN] Member list response
+  tenantTenantMemberRoleReplaceResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonTenantMemberInfo'
+        title: 成员信息 | [EN] Member info
+    title: |-
+      覆盖成员角色响应
+      [EN] Replace member roles response

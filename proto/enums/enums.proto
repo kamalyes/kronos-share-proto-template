@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/enums";
+option java_package = "com.kamalyes.kronos.api.enums";
+package kronos.api.enums;
+
+// 枚举类型聚合文件 - 公开导入所有子模块。
+// [EN] Enum types aggregation file - public imports all sub-modules
+// 其他服务只需 import "proto/enums/enums.proto" 即可访问所有枚举。
+// [EN] Other services only need to import "proto/enums/enums.proto" to access all enums
+//
+// 新增枚举文件后必须在这里注册，否则业务服务拿不到。
+// [EN] A new enum file must be registered here or service files cannot see it
+
+// 通用状态枚举。
+// [EN] Common status enums
+import public "proto/enums/status.proto";
+
+// catalog 模块枚举。
+// [EN] catalog module enums
+import public "proto/enums/catalog.proto";
+
+// inventory 模块枚举。
+// [EN] inventory module enums
+import public "proto/enums/inventory.proto";
+
+// tenant 模块枚举。
+// [EN] tenant module enums
+import public "proto/enums/tenant.proto";
+
+// key 模块枚举（临时密钥与 ID 号段分发）。
+//
+// 这个模块是具体能力而不是占位示例，所以用 IncludeKeyModule 开关控制：
+// 不需要密钥/发号能力的协议中心可以关掉，关掉后这一段不生成。
+//
+// [EN] This module is a concrete capability rather than a placeholder example, so it is gated
+// by IncludeKeyModule: a hub that needs neither temporary keys nor id allocation turns it off.
+import public "proto/enums/key.proto";

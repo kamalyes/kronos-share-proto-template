@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+// ============================================================================
+// 聚合文档的元信息 | Bundle-level document metadata
+//
+// 这个文件不定义任何消息或服务，它只有一个作用：给「聚合 OpenAPI 文档」
+// （docs/openapi.swagger.json）提供 info / securityDefinitions 这些文档级字段
+//
+// 为什么需要它：protoc-gen-openapiv2 的 allow_merge 模式会把多个 proto 合成
+// 一份文档，而合并后的 info 取自命令行里的第一个文件。如果不给它一个专门的
+// 元信息文件，聚合文档的标题就会是某个业务服务的标题（比如「Product Service」），
+// 对外看起来像是只有一个服务generate-modular.sh 把本文件排在参数第一位
+//
+// 它不参与 Go 代码生成：openapi 没有登记在 generate-modular.sh 的模块列表里，
+// 所以 pb/ 下不会多出一个空包
+//
+// [EN] This file declares no messages and no services. Its only job is to supply the
+// document-level fields (info, securityDefinitions) of the aggregated OpenAPI document
+// at docs/openapi.swagger.json.
+//
+// Why it exists: in allow_merge mode protoc-gen-openapiv2 merges several protos into one
+// document and takes `info` from the FIRST file on the command line. Without a dedicated
+// metadata file the bundle would be titled after whichever business service came first
+// (say "Product Service"), as if the hub exposed a single service. generate-modular.sh
+// passes this file first.
+//
+// It takes no part in Go code generation: `openapi` is not registered in the module list
+// of generate-modular.sh, so no empty package appears under pb/.
+// ============================================================================
+
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/openapi";
+option java_package = "com.kamalyes.kronos.api.openapi";
+package kronos.api.openapi;
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Kronos Share Proto API"
+    description: "kronos-share-proto-template 聚合 OpenAPI 文档，由全部业务模块的 proto 合并生成，供 TypeScript/Java/Dart 等多语言 SDK 与 API 门户消费 | Aggregated OpenAPI document of kronos-share-proto-template, merged from every business module and consumed by TypeScript/Java/Dart SDK generators and API portals"
+    version: "1.0.0"
+    contact: {
+      name: "kamalyes"
+      email: "example@qq.com"
+      url: "https://github.com/kamalyes/kronos-share-proto-template"
+    }
+  }
+
+  // 分组说明 | Tag descriptions
+  //
+  // 名字必须和各服务 openapiv2_operation 里写的 tags 完全一致，否则后处理会把它
+  // 当成「未引用的 tag」删掉，聚合文档里就只剩分组名没有说明
+  // 新增模块后记得在这里补一条，否则它在文档站里是个没有描述的裸分组
+  //
+  // [EN] These names must match the tags declared in each service's openapiv2_operation exactly,
+  // otherwise post-processing drops them as unreferenced and the bundle keeps the group names
+  // without any description. Register a new module here or it shows up as a bare group
+  tags: [
+    {
+      name: "ProductManagement"
+      description: "Product 管理 | Product management"
+    },
+    {
+      name: "WarehouseManagement"
+      description: "Warehouse 管理 | Warehouse management"
+    },
+    {
+      name: "TenantManagement"
+      description: "Tenant 管理 | Tenant management"
+    },
+    {
+      name: "TenantMemberManagement"
+      description: "Tenant 成员管理 | Tenant member management"
+    }
+  ]
+
+  // 这里的 schemes 只影响文档里展示的协议，不影响实际路由
+  // [EN] Only affects what the document advertises, not actual routing
+  schemes: [HTTP, HTTPS]
+  consumes: "application/json"
+  produces: "application/json"
+
+  // 声明鉴权方式，生成的 SDK 据此知道要往 Authorization 头里塞 token
+  // [EN] Declares the auth scheme so generated SDKs know to send an Authorization header
+  security_definitions: {
+    security: {
+      key: "BearerAuth"
+      value: {
+        type: TYPE_API_KEY
+        in: IN_HEADER
+        name: "Authorization"
+        description: "格式为 `Bearer <token>` | Formatted as `Bearer <token>`"
+      }
+    }
+  }
+  security: {
+    security_requirement: {
+      key: "BearerAuth"
+      value: {}
+    }
+  }
+};

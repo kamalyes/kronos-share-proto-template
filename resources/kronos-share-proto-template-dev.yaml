@@ -1,0 +1,102 @@
+# ============================================================================
+# go-rpc-gateway 开发环境配置 | Development configuration
+#
+# 加载规则：bootstrap 以 WithPrefix("kronos-share-proto-template") + 环境名拼出文件名，
+# 即本文件对应 environment=development新增环境就复制一份改名，例如
+# kronos-share-proto-template-prod.yaml，并在 bootstrap/main.go 注册环境前缀。
+#
+# [EN] Loading rule: bootstrap combines WithPrefix("kronos-share-proto-template") with the
+# environment name, so this file serves environment=development. Copy and rename it
+# for another environment (e.g. kronos-share-proto-template-prod.yaml) and register the
+# prefix in bootstrap/main.go.
+# ============================================================================
+
+name: "kronos-share-proto-template 文档网关 | docs gateway"
+enabled: true
+debug: true
+version: "v1.0.0"
+environment: "development"
+
+# HTTP 服务器配置 | HTTP server
+http:
+  host: "0.0.0.0"
+  port: 18080
+  read-timeout: 30
+  write-timeout: 30
+  idle-timeout: 60
+
+# Swagger 文档配置 | Swagger documentation
+swagger:
+  enabled: true
+  hot-reload: true # 改完 proto 重新生成后无需重启 | no restart needed after regeneration
+  json-path: "/swagger/doc.json"
+  ui-path: "/swagger"
+  yaml-path: "/swagger/doc.yaml"
+  title: "Kronos Gateway API Documentation"
+  description: "kronos-share-proto-template 聚合 API 文档 | aggregated API documentation"
+  version: "1.0.0"
+
+  # 聚合配置：把各模块的 swagger 合并成一个文档站。
+  # [EN] Aggregation: merge every module's swagger into one docs site
+  #
+  # 新增服务后必须在 services 里登记，否则文档站看不到它。
+  # [EN] Register new services here or the docs site will miss them
+  aggregate:
+    enabled: true
+    mode: "merge" # merge: 合并为一个文档 | selector: 提供服务选择界面
+    ui-layout: "tabs" # tabs | dropdown | list
+    services:
+      - name: "ProductService"
+        description: "Product 管理服务（完整 CRUD 示例） | Product management (full CRUD example)"
+        spec-path: "./proto/catalog/product_service.swagger.yaml"
+        version: "1.0.0"
+        enabled: true
+
+      - name: "WarehouseService"
+        description: "Warehouse 管理服务（第二个 CRUD 示例） | Warehouse management (second CRUD example)"
+        spec-path: "./proto/inventory/warehouse_service.swagger.yaml"
+        version: "1.0.0"
+        enabled: true
+
+      - name: "TenantService"
+        description: "Tenant 管理服务（混合示例：CRUD + 动作型 + 子资源） | Tenant management (mixed example)"
+        spec-path: "./proto/tenant/tenant_service.swagger.yaml"
+        version: "1.0.0"
+        enabled: true
+
+      - name: "TenantMemberService"
+        description: "Tenant 成员管理服务（同模块的第二个 service） | Tenant member management (second service in the module)"
+        spec-path: "./proto/tenant/tenant_member_service.swagger.yaml"
+        version: "1.0.0"
+        enabled: true
+
+      - name: "TempKeyService"
+        description: "临时密钥服务（RSA 签发 / 解密 / 销毁，场景 + 租户双重隔离） | Temporary key service: RSA issue, decrypt and destroy, isolated by scenario and tenant"
+        spec-path: "./proto/key/temp_key_service.swagger.yaml"
+        version: "1.0.0"
+        enabled: true
+
+      - name: "IdBlockService"
+        description: "ID 号段分发服务（集中发号，调用方本地缓冲） | Id block allocation: one central sequence, buffered by callers"
+        spec-path: "./proto/key/id_block_service.swagger.yaml"
+        version: "1.0.0"
+        enabled: true
+
+  # 独立文档入口：按受众拆分文档，避免把所有接口塞进一页。
+  # 聚合文档（merge）给内部排查用，拆分入口给对外交付用：
+  # 对外只暴露该受众真正能调的接口，而不是让对方在上百个接口里找自己那几个。
+  # [EN] Standalone documents: split by audience instead of one giant page. The merged view
+  # is for internal debugging; split entries are what you hand to a consumer, exposing only
+  # the endpoints that audience can actually call.
+  # - 管理端 | Admin: /swagger/documents/AdminService
+  documents:
+    - name: "AdminService"
+      title: "管理端 API | Admin API"
+      description: "kronos-share-proto-template 管理端接口 | admin-facing endpoints"
+      version: "1.0.0"
+      enabled: true
+      sources:
+        - service: "ProductService"
+        - service: "WarehouseService"
+        - service: "TenantService"
+        - service: "TenantMemberService"

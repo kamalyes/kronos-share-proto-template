@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/enums";
+option java_package = "com.kamalyes.kronos.api.enums";
+package kronos.api.enums;
+
+// inventory 模块枚举 | inventory module enums
+
+// Warehouse 分类。
+// [EN] Warehouse category
+enum WarehouseCategory {
+  WAREHOUSE_CATEGORY_UNSPECIFIED = 0; // 未指定 | [EN] Unspecified
+  WAREHOUSE_CATEGORY_STANDARD = 1;    // 标准 | [EN] Standard
+  WAREHOUSE_CATEGORY_PREMIUM = 2;     // 高级 | [EN] Premium
+}

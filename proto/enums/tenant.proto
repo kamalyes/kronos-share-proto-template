@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/enums";
+option java_package = "com.kamalyes.kronos.api.enums";
+package kronos.api.enums;
+
+// tenant 模块枚举 | tenant module enums
+// 本模块下有多个 service 共用这些枚举，所以必须放在 enums/ 而不是某个 service 文件里
+// [EN] Several services in this module share these enums, so they belong in enums/ rather than one service file
+
+// Tenant 状态
+// [EN] Tenant status
+// 聚合根有自己的状态机（待激活 -> 正常 -> 冻结），不能复用 CommonStatus 的启用/禁用两态
+// [EN] The aggregate root has its own state machine (pending -> normal -> frozen), which
+// the two-state CommonStatus cannot express
+enum TenantStatus {
+  TENANT_STATUS_UNSPECIFIED = 0; // 未指定 | [EN] Unspecified
+  TENANT_STATUS_PENDING = 1;     // 待激活 | [EN] Pending activation
+  TENANT_STATUS_NORMAL = 2;      // 正常 | [EN] Normal
+  TENANT_STATUS_FROZEN = 3;      // 冻结 | [EN] Frozen
+}
+
+// 成员角色
+// [EN] Member role
+enum TenantMemberRole {
+  TENANT_MEMBER_ROLE_UNSPECIFIED = 0; // 未指定 | [EN] Unspecified
+  TENANT_MEMBER_ROLE_OWNER = 1;       // 所有者 | [EN] Owner
+  TENANT_MEMBER_ROLE_ADMIN = 2;       // 管理员 | [EN] Admin
+  TENANT_MEMBER_ROLE_VIEWER = 3;      // 只读 | [EN] Viewer
+}
+
+// 同步状态
+// [EN] Sync state
+// 动作型接口（重试同步）用它回报结果，避免用布尔值表达三种以上的结局
+// [EN] Returned by the action-style retry endpoint; a bool cannot express more than two outcomes
+enum TenantSyncState {
+  TENANT_SYNC_STATE_UNSPECIFIED = 0; // 未指定 | [EN] Unspecified
+  TENANT_SYNC_STATE_PENDING = 1;     // 待同步 | [EN] Pending
+  TENANT_SYNC_STATE_SYNCED = 2;      // 已同步 | [EN] Synced
+  TENANT_SYNC_STATE_FAILED = 3;      // 同步失败 | [EN] Failed
+}

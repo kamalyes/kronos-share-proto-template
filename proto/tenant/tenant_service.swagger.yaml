@@ -1,0 +1,596 @@
+swagger: "2.0"
+info:
+  title: Kronos Tenant Service
+  description: 'Tenant 管理服务（混合示例：CRUD + 动作型接口 + 子资源） | Tenant management service (mixed example: CRUD + action endpoints + sub-resources)'
+  version: 1.0.0
+tags:
+  - name: TenantManagement
+    description: Tenant 管理 | Tenant Management
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /v1/tenant/tenants:
+    get:
+      summary: Tenant列表 | Tenant list
+      operationId: TenantService_TenantList
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantListResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page_request.page
+          description: 当前页码 | [EN] Current page number
+          in: query
+          required: false
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_request.size
+          description: 每页条数（上限保护，防止一次拉全表） | [EN] Page size, capped to protect the backend
+          in: query
+          required: false
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 200
+        - name: page_request.total
+          description: 总条数（响应字段，请求 query 不继承必填） | [EN] Total count
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: sort.field
+          description: 排序字段 | [EN] Sort field
+          in: query
+          required: false
+          type: string
+        - name: sort.ascending
+          description: 是否升序 | [EN] Whether ascending
+          in: query
+          required: false
+          type: boolean
+        - name: keyword
+          description: 关键词（编码、名称）| [EN] Keyword (code, name)
+          in: query
+          required: false
+          type: string
+        - name: status
+          description: |-
+            状态 | [EN] Status
+
+             - TENANT_STATUS_UNSPECIFIED: 未指定 | [EN] Unspecified
+             - TENANT_STATUS_PENDING: 待激活 | [EN] Pending activation
+             - TENANT_STATUS_NORMAL: 正常 | [EN] Normal
+             - TENANT_STATUS_FROZEN: 冻结 | [EN] Frozen
+          in: query
+          required: false
+          type: string
+          enum:
+            - TENANT_STATUS_UNSPECIFIED
+            - TENANT_STATUS_PENDING
+            - TENANT_STATUS_NORMAL
+            - TENANT_STATUS_FROZEN
+          default: TENANT_STATUS_UNSPECIFIED
+        - name: region_id
+          description: 按地区过滤 | [EN] Filter by region
+          in: query
+          required: false
+          type: string
+      tags:
+        - TenantManagement
+    post:
+      summary: 创建Tenant | Create Tenant
+      operationId: TenantService_TenantCreate
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantCreateResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/tenantTenantCreateRequest'
+      tags:
+        - TenantManagement
+  /v1/tenant/tenants/{tenant_id}:
+    get:
+      summary: 获取Tenant详情 | Get Tenant detail
+      operationId: TenantService_TenantGet
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantGetResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: TenantID | [EN] Tenant ID
+          in: path
+          required: true
+          type: string
+      tags:
+        - TenantManagement
+    delete:
+      summary: 删除Tenant | Delete Tenant
+      operationId: TenantService_TenantDelete
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/commonGeneralEmptyResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: TenantID | [EN] Tenant ID
+          in: path
+          required: true
+          type: string
+      tags:
+        - TenantManagement
+    put:
+      summary: 更新Tenant | Update Tenant
+      operationId: TenantService_TenantUpdate
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantUpdateResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: TenantID | [EN] Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/TenantServiceTenantUpdateBody'
+      tags:
+        - TenantManagement
+  /v1/tenant/tenants/{tenant_id}/region-assignments:
+    post:
+      summary: 分配地区 | Assign region
+      operationId: TenantService_TenantRegionAssign
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantRegionAssignResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: TenantID | [EN] Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/TenantServiceTenantRegionAssignBody'
+      tags:
+        - TenantManagement
+  /v1/tenant/tenants/{tenant_id}/region-assignments/{assignment_id}:
+    delete:
+      summary: 移除地区分配 | Remove region assignment
+      operationId: TenantService_TenantRegionAssignmentRemove
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/commonGeneralEmptyResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: TenantID | [EN] Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: assignment_id
+          description: 分配ID | [EN] Assignment ID
+          in: path
+          required: true
+          type: string
+      tags:
+        - TenantManagement
+    put:
+      summary: 更新地区分配 | Update region assignment
+      operationId: TenantService_TenantRegionAssignmentUpdate
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantRegionAssignmentUpdateResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: TenantID | [EN] Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: assignment_id
+          description: 分配ID | [EN] Assignment ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/TenantServiceTenantRegionAssignmentUpdateBody'
+      tags:
+        - TenantManagement
+  /v1/tenant/tenants/{tenant_id}/retry-sync:
+    post:
+      summary: 重试下游同步 | Retry downstream sync
+      operationId: TenantService_TenantRetrySync
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/tenantTenantRetrySyncResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tenant_id
+          description: TenantID | [EN] Tenant ID
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/TenantServiceTenantRetrySyncBody'
+      tags:
+        - TenantManagement
+definitions:
+  TenantServiceTenantRegionAssignBody:
+    type: object
+    properties:
+      region_id:
+        type: string
+        title: 地区ID | [EN] Region ID
+      primary:
+        type: boolean
+        title: 是否设为主地区 | [EN] Whether to set as primary
+    title: |-
+      分配地区请求
+      [EN] Assign region request
+  TenantServiceTenantRegionAssignmentUpdateBody:
+    type: object
+    properties:
+      primary:
+        type: boolean
+        title: 是否主地区 | [EN] Whether primary
+    title: |-
+      更新地区分配请求
+      [EN] Update region assignment request
+  TenantServiceTenantRetrySyncBody:
+    type: object
+    properties:
+      force:
+        type: boolean
+        title: 是否强制重新同步已成功的项 | [EN] Whether to re-sync already succeeded items
+    title: |-
+      重试同步请求
+      [EN] Retry sync request
+      动作型接口也要有自己的 Request/Response，不要复用 GetRequest：
+      以后加「只同步某个下游」这种参数时才有地方放
+      [EN] An action endpoint needs its own request/response rather than reusing GetRequest,
+      so that parameters like "sync only this downstream" have somewhere to live later
+  TenantServiceTenantUpdateBody:
+    type: object
+    properties:
+      name:
+        type: string
+        title: 名称 | [EN] Name
+      status:
+        $ref: '#/definitions/enumsTenantStatus'
+        title: 状态 | [EN] Status
+    title: |-
+      更新Tenant请求
+      [EN] Update Tenant request
+  commonGeneralEmptyResponse:
+    type: object
+    title: |-
+      通用空响应。
+      [EN] General empty response
+  commonPaging:
+    type: object
+    properties:
+      page:
+        type: integer
+        format: int32
+        title: 当前页码 | [EN] Current page number
+        minimum: 1
+      size:
+        type: integer
+        format: int32
+        title: 每页条数（上限保护，防止一次拉全表） | [EN] Page size, capped to protect the backend
+        minimum: 1
+        maximum: 200
+      total:
+        type: integer
+        format: int32
+        title: 总条数（响应字段，请求 query 不继承必填） | [EN] Total count
+    title: |-
+      分页信息。
+      [EN] Paging information
+      请求与响应共用一个消息：请求里填 page/size，响应里回填 total
+      [EN] Shared by request and response: requests fill page/size, responses fill total
+  commonSorting:
+    type: object
+    properties:
+      field:
+        type: string
+        title: 排序字段 | [EN] Sort field
+      ascending:
+        type: boolean
+        title: 是否升序 | [EN] Whether ascending
+    title: |-
+      排序信息。
+      [EN] Sorting information
+  commonTenantInfo:
+    type: object
+    properties:
+      id:
+        type: string
+        title: 主键ID | [EN] Primary key ID
+      code:
+        type: string
+        title: 编码（全局唯一）| [EN] Code, globally unique
+      name:
+        type: string
+        title: 名称 | [EN] Name
+      status:
+        $ref: '#/definitions/enumsTenantStatus'
+        title: 状态 | [EN] Status
+      sync_state:
+        $ref: '#/definitions/enumsTenantSyncState'
+        title: 下游同步状态 | [EN] Downstream sync state
+      platform_id:
+        type: string
+        title: 平台ID | [EN] Platform ID
+      region_id:
+        type: string
+        title: 地区ID | [EN] Region ID
+      member_count:
+        type: integer
+        format: int32
+        title: 成员数（聚合统计）| [EN] Member count
+      regions:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/commonTenantRegionAssignment'
+        title: 地区分配 | [EN] Region assignments
+      created_at:
+        type: string
+        format: date-time
+        title: 创建时间 | [EN] Created at
+      updated_at:
+        type: string
+        format: date-time
+        title: 更新时间 | [EN] Updated at
+    title: |-
+      Tenant 信息（聚合根）
+      [EN] Tenant information (aggregate root)
+  commonTenantRegionAssignment:
+    type: object
+    properties:
+      id:
+        type: string
+        title: 分配ID | [EN] Assignment ID
+      region_id:
+        type: string
+        title: 地区ID | [EN] Region ID
+      primary:
+        type: boolean
+        title: 是否主地区 | [EN] Whether primary
+      assigned_at:
+        type: string
+        format: date-time
+        title: 分配时间 | [EN] Assigned at
+    title: |-
+      地区分配（子资源）
+      [EN] Region assignment (sub-resource)
+      子资源有自己的 ID，是因为它要被单独更新和移除；只读的附属数据不需要 ID
+      [EN] A sub-resource carries its own ID because it is updated and removed individually;
+      read-only attached data does not need one
+  enumsTenantStatus:
+    type: string
+    enum:
+      - TENANT_STATUS_UNSPECIFIED
+      - TENANT_STATUS_PENDING
+      - TENANT_STATUS_NORMAL
+      - TENANT_STATUS_FROZEN
+    default: TENANT_STATUS_UNSPECIFIED
+    description: |-
+      - TENANT_STATUS_UNSPECIFIED: 未指定 | [EN] Unspecified
+       - TENANT_STATUS_PENDING: 待激活 | [EN] Pending activation
+       - TENANT_STATUS_NORMAL: 正常 | [EN] Normal
+       - TENANT_STATUS_FROZEN: 冻结 | [EN] Frozen
+    title: |-
+      Tenant 状态
+      [EN] Tenant status
+      聚合根有自己的状态机（待激活 -> 正常 -> 冻结），不能复用 CommonStatus 的启用/禁用两态
+      [EN] The aggregate root has its own state machine (pending -> normal -> frozen), which
+      the two-state CommonStatus cannot express
+  enumsTenantSyncState:
+    type: string
+    enum:
+      - TENANT_SYNC_STATE_UNSPECIFIED
+      - TENANT_SYNC_STATE_PENDING
+      - TENANT_SYNC_STATE_SYNCED
+      - TENANT_SYNC_STATE_FAILED
+    default: TENANT_SYNC_STATE_UNSPECIFIED
+    description: |-
+      - TENANT_SYNC_STATE_UNSPECIFIED: 未指定 | [EN] Unspecified
+       - TENANT_SYNC_STATE_PENDING: 待同步 | [EN] Pending
+       - TENANT_SYNC_STATE_SYNCED: 已同步 | [EN] Synced
+       - TENANT_SYNC_STATE_FAILED: 同步失败 | [EN] Failed
+    title: |-
+      同步状态
+      [EN] Sync state
+      动作型接口（重试同步）用它回报结果，避免用布尔值表达三种以上的结局
+      [EN] Returned by the action-style retry endpoint; a bool cannot express more than two outcomes
+  protobufAny:
+    type: object
+    properties:
+      '@type':
+        type: string
+    additionalProperties: {}
+  rpcStatus:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      details:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/protobufAny'
+  tenantTenantCreateRequest:
+    type: object
+    properties:
+      code:
+        type: string
+        title: 编码（全局唯一，创建后不可改）| [EN] Code, globally unique and immutable
+        minLength: 2
+        maxLength: 32
+      name:
+        type: string
+        title: 名称 | [EN] Name
+        minLength: 2
+        maxLength: 64
+      platform_id:
+        type: string
+        title: 平台ID | [EN] Platform ID
+      region_ids:
+        type: array
+        items:
+          type: string
+        title: 初始地区列表 | [EN] Initial region list
+        maxItems: 20
+      owner_user_id:
+        type: string
+        title: 所有者用户ID | [EN] Owner user ID
+    title: |-
+      创建Tenant请求
+      [EN] Create Tenant request
+    required:
+      - code
+      - name
+      - platform_id
+      - owner_user_id
+  tenantTenantCreateResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonTenantInfo'
+        title: Tenant信息 | [EN] Tenant info
+    title: |-
+      创建Tenant响应
+      [EN] Create Tenant response
+  tenantTenantGetResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonTenantInfo'
+        title: Tenant信息 | [EN] Tenant info
+    title: |-
+      获取Tenant详情响应
+      [EN] Get Tenant detail response
+  tenantTenantListResponse:
+    type: object
+    properties:
+      page_response:
+        $ref: '#/definitions/commonPaging'
+        title: 分页响应 | [EN] Page response
+      infos:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/commonTenantInfo'
+        title: 列表 | [EN] List
+    title: |-
+      Tenant列表响应
+      [EN] Tenant list response
+  tenantTenantRegionAssignResponse:
+    type: object
+    properties:
+      assignment:
+        $ref: '#/definitions/commonTenantRegionAssignment'
+        title: 地区分配 | [EN] Region assignment
+    title: |-
+      分配地区响应
+      [EN] Assign region response
+  tenantTenantRegionAssignmentUpdateResponse:
+    type: object
+    properties:
+      assignment:
+        $ref: '#/definitions/commonTenantRegionAssignment'
+        title: 地区分配 | [EN] Region assignment
+    title: |-
+      更新地区分配响应
+      [EN] Update region assignment response
+  tenantTenantRetrySyncResponse:
+    type: object
+    properties:
+      sync_state:
+        $ref: '#/definitions/enumsTenantSyncState'
+        title: 本次动作后的同步状态 | [EN] Sync state after this action
+      message:
+        type: string
+        title: 结果说明 | [EN] Result description
+    title: |-
+      重试同步响应
+      [EN] Retry sync response
+  tenantTenantUpdateResponse:
+    type: object
+    properties:
+      info:
+        $ref: '#/definitions/commonTenantInfo'
+        title: Tenant信息 | [EN] Tenant info
+    title: |-
+      更新Tenant响应
+      [EN] Update Tenant response

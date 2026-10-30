@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/enums";
+option java_package = "com.kamalyes.kronos.api.enums";
+package kronos.api.enums;
+
+// 通用状态。
+// [EN] Common status
+// 绝大多数业务实体的启用/禁用都复用这一个枚举，不要在各模块里重复定义。
+// [EN] Reuse this enum for enable/disable across entities instead of redefining it per module
+enum CommonStatus {
+  COMMON_STATUS_UNSPECIFIED = 0;  // 未指定 | [EN] Unspecified
+  COMMON_STATUS_NORMAL = 1;       // 正常 | [EN] Normal
+  COMMON_STATUS_DISABLED = 2;     // 禁用 | [EN] Disabled
+}
+
+// 布尔值枚举。
+// [EN] True or false enum
+// proto3 的 bool 零值无法区分「未设置」与 false，需要三态时用这个枚举。
+// [EN] A proto3 bool cannot tell "unset" from false; use this enum when you need three states
+enum TrueOrFalse {
+  TOF_UNKNOWN = 0;                // 未知 | [EN] Unknown
+  TOF_TRUE = 1;                   // 是 | [EN] True
+  TOF_FALSE = 2;                  // 否 | [EN] False
+}
+
+// 排序方向。
+// [EN] Sort direction
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0; // 未指定 | [EN] Unspecified
+  SORT_DIRECTION_ASC = 1;         // 升序 | [EN] Ascending
+  SORT_DIRECTION_DESC = 2;        // 降序 | [EN] Descending
+}

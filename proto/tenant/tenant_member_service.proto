@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "proto/common/common.proto";
+import "proto/enums/enums.proto";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/tenant";
+option java_package = "com.kamalyes.kronos.api.tenant";
+package kronos.api.tenant;
+
+// 同模块的第二个 service | The module's second service
+//
+// 它与 tenant_service.proto 共享同一个 proto package 与 Go 包（pb/tenant），
+// 共用 common/tenant.proto 的实体和 enums/tenant.proto 的枚举，
+// 但是一个独立的 service：可以单独挂在不同的 gRPC 服务端、单独授权、单独限流
+//
+// 为什么不并进聚合根那个 service：成员管理的调用方（控制台的成员页）与聚合根的调用方
+// （运营后台的租户页）通常不是同一拨人，权限与变更频率都不同，拆开后各自演进不互相牵连
+//
+// [EN] It shares the proto package and Go package (pb/tenant) with
+// tenant_service.proto and reuses the module's shared entities and enums,
+// yet stays a separate service: it can be hosted, authorized and rate-limited on its own.
+//
+// Why not fold it into the aggregate-root service: member management is called by a different
+// audience than the root resource, with different permissions and change frequency, so keeping
+// them apart lets each evolve without dragging the other.
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Kronos Tenant Member Service"
+    description: "Tenant 成员管理服务（子资源 + 动作型 + 批量） | Tenant member management (sub-resources + actions + batch)"
+    version: "1.0.0"
+  }
+  tags: [
+    {
+      name: "TenantMemberManagement"
+      description: "Tenant 成员管理 | Tenant Member Management"
+    }
+  ]
+};
+
+//===========================  成员消息定义 | Member Message Definitions  ==========================//
+
+// 成员列表请求
+// [EN] Member list request
+// 子资源列表把父 ID 放在路径里、过滤条件放在 query，父 ID 不要再塞进 body
+// [EN] A sub-resource list takes the parent ID from the path and filters from the query;
+// the parent ID never goes into the body
+message TenantMemberListRequest {
+  string tenant_id = 1;                      // 所属TenantID | [EN] Owning Tenant ID @inject_tag: validate:"required"
+  common.Paging page_request = 2;                                 // 分页请求 | [EN] Page request @inject_tag: validate:"required"
+  enums.TenantMemberRole role = 3;          // 按角色过滤 | [EN] Filter by role
+  enums.CommonStatus status = 4;                                  // 按状态过滤 | [EN] Filter by status
+}
+
+// 成员列表响应
+// [EN] Member list response
+message TenantMemberListResponse {
+  common.Paging page_response = 1;                                      // 分页响应 | [EN] Page response
+  repeated common.TenantMemberInfo infos = 2;     // 成员列表 | [EN] Member list
+}
+
+// 添加成员请求
+// [EN] Add member request
+message TenantMemberAddRequest {
+  string tenant_id = 1;                            // 所属TenantID | [EN] Owning Tenant ID @inject_tag: validate:"required"
+  string user_id = 2;                                                   // 用户ID | [EN] User ID @inject_tag: validate:"required"
+  string email = 3;                                                     // 邮箱 | [EN] Email @inject_tag: validate:"omitempty,email"
+  repeated enums.TenantMemberRole roles = 4;      // 初始角色 | [EN] Initial roles @inject_tag: validate:"required,max=8"
+}
+
+// 添加成员响应
+// [EN] Add member response
+message TenantMemberAddResponse {
+  common.TenantMemberInfo info = 1;               // 成员信息 | [EN] Member info
+}
+
+// 移除成员请求
+// [EN] Remove member request
+message TenantMemberRemoveRequest {
+  string tenant_id = 1;                            // 所属TenantID | [EN] Owning Tenant ID @inject_tag: validate:"required"
+  string member_id = 2;                                                 // 成员ID | [EN] Member ID @inject_tag: validate:"required"
+}
+
+//===========================  动作型与批量消息 | Action and Batch Messages  ==========================//
+
+// 覆盖成员角色请求
+// [EN] Replace member roles request
+// 用 PUT 而不是 PATCH：语义是「把角色集合整体替换成这一份」，
+// 增量加减角色应该是另外两个动作型接口，不要用同一个接口的可选字段去表达两种语义
+// [EN] PUT rather than PATCH: the semantics are "replace the whole role set with this one".
+// Incremental add/remove belong to separate action endpoints instead of optional fields
+// on one endpoint expressing two different behaviours
+message TenantMemberRoleReplaceRequest {
+  string tenant_id = 1;                            // 所属TenantID | [EN] Owning Tenant ID @inject_tag: validate:"required"
+  string member_id = 2;                                                 // 成员ID | [EN] Member ID @inject_tag: validate:"required"
+  repeated enums.TenantMemberRole roles = 3;      // 覆盖后的角色集合 | [EN] The resulting role set @inject_tag: validate:"required,max=8"
+}
+
+// 覆盖成员角色响应
+// [EN] Replace member roles response
+message TenantMemberRoleReplaceResponse {
+  common.TenantMemberInfo info = 1;               // 成员信息 | [EN] Member info
+}
+
+// 批量邀请成员请求
+// [EN] Batch invite members request
+message TenantMemberBatchInviteRequest {
+  string tenant_id = 1;                            // 所属TenantID | [EN] Owning Tenant ID @inject_tag: validate:"required"
+  repeated string emails = 2;                                           // 邮箱列表 | [EN] Email list @inject_tag: validate:"required,max=50"
+  repeated enums.TenantMemberRole roles = 3;      // 统一赋予的角色 | [EN] Roles granted to all invitees @inject_tag: validate:"required,max=8"
+}
+
+// 批量邀请成员响应
+// [EN] Batch invite members response
+message TenantMemberBatchInviteResponse {
+  repeated common.BatchResult results = 1;                              // 逐条结果 | [EN] Per-item results
+}
+
+//===========================  服务定义 | Service Definition  ==========================//
+
+// Tenant 成员管理服务
+// [EN] Tenant member management service
+service TenantMemberService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    description: "Tenant 成员管理服务（同模块的第二个 service） | Tenant member management (the module's second service)"
+  };
+
+  // 成员列表
+  // [EN] Member list
+  rpc TenantMemberList(TenantMemberListRequest) returns (TenantMemberListResponse) {
+    option (google.api.http) = {
+      get: "/v1/tenant/tenants/{tenant_id}/members"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "成员列表 | Member list"
+      tags: "TenantMemberManagement"
+    };
+  }
+
+  // 添加成员
+  // [EN] Add member
+  rpc TenantMemberAdd(TenantMemberAddRequest) returns (TenantMemberAddResponse) {
+    option (google.api.http) = {
+      post: "/v1/tenant/tenants/{tenant_id}/members"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "添加成员 | Add member"
+      tags: "TenantMemberManagement"
+    };
+  }
+
+  // 移除成员
+  // [EN] Remove member
+  rpc TenantMemberRemove(TenantMemberRemoveRequest) returns (common.GeneralEmptyResponse) {
+    option (google.api.http) = {
+      delete: "/v1/tenant/tenants/{tenant_id}/members/{member_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "移除成员 | Remove member"
+      tags: "TenantMemberManagement"
+    };
+  }
+
+  // 覆盖成员角色
+  // [EN] Replace member roles
+  rpc TenantMemberRoleReplace(TenantMemberRoleReplaceRequest) returns (TenantMemberRoleReplaceResponse) {
+    option (google.api.http) = {
+      put: "/v1/tenant/tenants/{tenant_id}/members/{member_id}/roles"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "覆盖成员角色 | Replace member roles"
+      tags: "TenantMemberManagement"
+    };
+  }
+
+  // 批量邀请成员
+  // [EN] Batch invite members
+  rpc TenantMemberBatchInvite(TenantMemberBatchInviteRequest) returns (TenantMemberBatchInviteResponse) {
+    option (google.api.http) = {
+      post: "/v1/tenant/tenants/{tenant_id}/members/batch-invite"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "批量邀请成员 | Batch invite members"
+      tags: "TenantMemberManagement"
+    };
+  }
+}

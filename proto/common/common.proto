@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/common";
+option java_package = "com.kamalyes.kronos.api.common";
+package kronos.api.common;
+
+// 通用消息类型聚合文件 - 公开导入所有子模块。
+// [EN] Common message types aggregation file - public imports all sub-modules
+// 其他服务只需 import "proto/common/common.proto" 即可访问所有通用消息。
+// [EN] Other services only need to import "proto/common/common.proto" to access all common messages
+//
+// 新增公共消息文件后必须在这里注册，否则业务服务拿不到。
+// [EN] A new common message file must be registered here or service files cannot see it
+
+// 结果和错误。
+// [EN] Result and error
+import public "proto/common/result.proto";
+
+// 空消息。
+// [EN] Empty messages
+import public "proto/common/empty.proto";
+
+// 分页和排序。
+// [EN] Pagination and sorting
+import public "proto/common/pagination.proto";
+
+// 多语言文本。
+// [EN] Localized text
+import public "proto/common/i18n.proto";
+
+// catalog 模块实体。
+// [EN] catalog module entities
+import public "proto/common/catalog.proto";
+
+// inventory 模块实体。
+// [EN] inventory module entities
+import public "proto/common/inventory.proto";
+
+// tenant 模块实体（混合模块，模块内多个 service 共用）。
+// [EN] tenant module entities, shared by several services inside that module
+import public "proto/common/tenant.proto";

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/common";
+option java_package = "com.kamalyes.kronos.api.common";
+package kronos.api.common;
+
+// 通用空请求。
+// [EN] General empty request
+// 用自定义空消息而非 google.protobuf.Empty：后续加字段不会破坏兼容性。
+// [EN] A custom empty message instead of google.protobuf.Empty: adding fields later stays compatible
+message GeneralEmptyRequest {}
+
+// 通用空响应。
+// [EN] General empty response
+message GeneralEmptyResponse {}

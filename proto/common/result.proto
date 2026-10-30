@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+import "proto/enums/enums.proto";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/common";
+option java_package = "com.kamalyes.kronos.api.common";
+package kronos.api.common;
+
+// 通用处理结果返回, 通常在Batch类请求中返回每个子请求的错误状态。
+// [EN] General processing result, usually returned for each sub-request in Batch mode
+message Result {
+  int32 code = 1;                   // 状态码 | [EN] Status code
+  string error = 2;                 // 错误信息 | [EN] Error message
+  enums.CommonStatus status = 3;    // 状态 | [EN] Status
+}
+
+// 错误信息结构。
+// [EN] Error information structure
+message Error {
+  string code = 1;                               // 错误代码 | [EN] Error code
+  string message = 2;                            // 错误信息 | [EN] Error message
+  map<string, string> details = 3;               // 错误详情 | [EN] Error details
+}
+
+// 批量操作结果。
+// [EN] Batch operation result
+// 批量接口不要用「整体成功/失败」，按条返回才能让调用方精确重试。
+// [EN] Batch APIs report per-item results so callers can retry precisely
+message BatchResult {
+  string id = 1;                                 // ID | [EN] ID
+  bool success = 2;                              // 是否成功 | [EN] Success
+  string error_message = 3;                      // 失败原因 | [EN] Error message
+}

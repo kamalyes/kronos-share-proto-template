@@ -1,0 +1,296 @@
+swagger: "2.0"
+info:
+  title: Kronos Temp Key Service
+  description: '临时 RSA 密钥服务：按租户 + 场景签发一次性密钥对，公钥下发给调用方加密敏感字段，私钥仅留在服务端并随 TTL 自动过期 | Temporary RSA key service: issues a per-tenant, per-scenario key pair, hands the public key to the caller for encrypting sensitive fields, and keeps the private key server-side under a TTL'
+  version: 1.0.0
+tags:
+  - name: TempKeyManagement
+    description: 临时密钥管理 | Temporary Key Management
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /v1/temp-keys/decrypt:
+    post:
+      summary: 解密 | Decrypt
+      description: 用签发时留存的私钥解密密文，校验场景一致与租户归属 | Decrypts with the stored private key, enforcing the scenario match and tenant ownership
+      operationId: TempKeyService_TempKeyDecrypt
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/keyTempKeyDecryptResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/keyTempKeyDecryptRequest'
+      tags:
+        - TempKeyManagement
+  /v1/temp-keys/destroy:
+    post:
+      summary: 销毁临时密钥 | Destroy a temporary key
+      description: 提前失效某个密钥，不等 TTL 到期 | Invalidates a key ahead of its TTL
+      operationId: TempKeyService_TempKeyDestroy
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/keyTempKeyDestroyResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/keyTempKeyDestroyRequest'
+      tags:
+        - TempKeyManagement
+  /v1/temp-keys/encrypt-probe:
+    post:
+      summary: 加密自检（调试用，生产应关闭）| Encrypt probe, for debugging; disable in production
+      description: 用服务端持有的密钥加密一段明文，供调用方验证加解密闭环 | Encrypts a short plaintext with the server-held key so the caller can verify the round trip
+      operationId: TempKeyService_TempKeyEncryptProbe
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/keyTempKeyEncryptProbeResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/keyTempKeyEncryptProbeRequest'
+      tags:
+        - TempKeyManagement
+  /v1/temp-keys/issue:
+    post:
+      summary: 签发临时密钥 | Issue a temporary key
+      description: 按租户 + 场景生成一对 RSA 密钥，返回公钥与密钥ID，私钥留在服务端并随 TTL 过期 | Generates an RSA pair for the tenant and scenario, returns the public key and key id, and keeps the private key server-side under a TTL
+      operationId: TempKeyService_TempKeyIssue
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/keyTempKeyIssueResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/keyTempKeyIssueRequest'
+      tags:
+        - TempKeyManagement
+definitions:
+  enumsKeyScenario:
+    type: string
+    enum:
+      - KEY_SCENARIO_UNSPECIFIED
+      - KEY_SCENARIO_LOGIN
+      - KEY_SCENARIO_PAYMENT
+      - KEY_SCENARIO_PROFILE
+    default: KEY_SCENARIO_UNSPECIFIED
+    description: |-
+      为什么密钥要绑场景：一对临时密钥如果不限用途，拿到登录场景公钥加密出来的密文
+      就能送去支付场景解密。绑定场景之后，密钥在创建时就确定了用途，
+      换场景使用会被直接拒绝，跨场景重放在协议层面就不成立。
+
+      新增场景必须在这里加枚举值，不要在服务侧用字符串自行扩展——
+      那样下游按名称解析会得到未知值，而且各服务的拼写迟早对不上。
+
+      [EN] An unscoped key pair lets ciphertext produced for the login flow be decrypted by the
+      payment flow. Binding the scenario fixes the purpose at creation time and makes a
+      cross-scenario replay impossible at the protocol level. A new scenario belongs here as an
+      enum value, never as an ad-hoc string on the service side, which decodes as unknown
+      downstream and eventually diverges in spelling between services.
+
+       - KEY_SCENARIO_UNSPECIFIED: 未指定（视为非法请求）| [EN] Unspecified, treated as invalid
+       - KEY_SCENARIO_LOGIN: 登录凭据加密 | [EN] Login credentials
+       - KEY_SCENARIO_PAYMENT: 支付要素加密 | [EN] Payment details
+       - KEY_SCENARIO_PROFILE: 个人敏感资料加密 | [EN] Personal profile data
+    title: |-
+      临时密钥使用场景。
+      [EN] Temporary key usage scenario
+  enumsRsaKeySize:
+    type: string
+    enum:
+      - RSA_KEY_SIZE_UNSPECIFIED
+      - RSA_KEY_SIZE_1024
+      - RSA_KEY_SIZE_2048
+      - RSA_KEY_SIZE_4096
+    default: RSA_KEY_SIZE_UNSPECIFIED
+    description: |-
+      用枚举而不是 int32：密钥长度不是任意数值，1000 位这种输入既不安全也生成不出来。
+      枚举把合法取值固定在协议层，服务侧不必再校验一遍数值范围。
+
+      选型权衡：2048 是当前通用基线；4096 更强但生成明显更慢（量级差异，不是百分比），
+      适合低频、长期有效的密钥；1024 已不满足现代安全要求，仅为兼容存量调用方保留。
+
+      [EN] An enum rather than an int32, because a key size is not an arbitrary number: a value
+      like 1000 is neither secure nor constructible. The enum pins the legal values at the protocol
+      level so the service need not re-validate a numeric range. On the trade-off: 2048 is today's
+      general baseline; 4096 is stronger but markedly slower to generate, an order of magnitude
+      rather than a percentage, which suits infrequent long-lived keys; 1024 no longer meets modern
+      requirements and is kept only for existing callers.
+
+       - RSA_KEY_SIZE_UNSPECIFIED: 未指定（服务侧取默认值）| [EN] Unspecified, the service picks a default
+       - RSA_KEY_SIZE_1024: 1024 位（已不推荐，仅兼容存量）| [EN] 1024-bit, legacy only
+       - RSA_KEY_SIZE_2048: 2048 位（推荐默认）| [EN] 2048-bit, recommended default
+       - RSA_KEY_SIZE_4096: 4096 位（生成慢，低频场景用）| [EN] 4096-bit, slow to generate
+    title: |-
+      RSA 密钥长度。
+      [EN] RSA key size
+  keyTempKeyDecryptRequest:
+    type: object
+    properties:
+      key_id:
+        type: string
+        title: 密钥ID | [EN] Key id
+      scenario:
+        $ref: '#/definitions/enumsKeyScenario'
+        title: 必须与签发时一致 | [EN] Must match the scenario used at issue
+      ciphertext:
+        type: string
+        format: byte
+        title: 用公钥加密的密文 | [EN] Ciphertext encrypted with the public key
+    title: |-
+      临时密钥解密请求。
+      [EN] Temporary key decrypt request
+    required:
+      - key_id
+      - scenario
+      - ciphertext
+  keyTempKeyDecryptResponse:
+    type: object
+    properties:
+      plaintext:
+        type: string
+        format: byte
+        title: 明文 | [EN] Plaintext
+    title: |-
+      临时密钥解密响应。
+      [EN] Temporary key decrypt response
+  keyTempKeyDestroyRequest:
+    type: object
+    properties:
+      key_id:
+        type: string
+        title: 密钥ID | [EN] Key id
+      scenario:
+        $ref: '#/definitions/enumsKeyScenario'
+        title: 必须与签发时一致 | [EN] Must match the scenario used at issue
+    title: |-
+      销毁临时密钥请求。
+      [EN] Destroy temporary key request
+    required:
+      - key_id
+      - scenario
+  keyTempKeyDestroyResponse:
+    type: object
+    properties:
+      destroyed:
+        type: boolean
+        title: 是否真的删掉了（false 表示本就不存在）| [EN] Whether a key was actually removed; false means it was already gone
+    title: |-
+      销毁临时密钥响应。
+      [EN] Destroy temporary key response
+  keyTempKeyEncryptProbeRequest:
+    type: object
+    properties:
+      key_id:
+        type: string
+        title: 密钥ID | [EN] Key id
+      scenario:
+        $ref: '#/definitions/enumsKeyScenario'
+        title: 必须与签发时一致 | [EN] Must match the scenario used at issue
+      plaintext:
+        type: string
+        title: 待加密明文 | [EN] Plaintext to encrypt
+        maxLength: 256
+    title: |-
+      加密自检请求（调试用）。
+      [EN] Encrypt probe request, for debugging
+    required:
+      - key_id
+      - scenario
+      - plaintext
+  keyTempKeyEncryptProbeResponse:
+    type: object
+    properties:
+      ciphertext:
+        type: string
+        format: byte
+        title: 密文，可直接送回 TempKeyDecrypt 验证闭环 | [EN] Ciphertext, feedable straight into TempKeyDecrypt to verify the round trip
+    title: |-
+      加密自检响应（调试用）。
+      [EN] Encrypt probe response, for debugging
+  keyTempKeyIssueRequest:
+    type: object
+    properties:
+      scenario:
+        $ref: '#/definitions/enumsKeyScenario'
+        title: 使用场景（必填，决定密钥用途）| [EN] Usage scenario, required
+      key_size:
+        $ref: '#/definitions/enumsRsaKeySize'
+        title: 密钥长度（不填由服务端取默认）| [EN] Key size, defaulted by the service when unset
+    title: |-
+      签发临时密钥请求。
+      [EN] Issue temporary key request
+    required:
+      - scenario
+  keyTempKeyIssueResponse:
+    type: object
+    properties:
+      key_id:
+        type: string
+        title: 密钥ID（后续解密/销毁凭此定位）| [EN] Key id used to locate the key later
+      public_key_pem:
+        type: string
+        title: PEM 格式公钥 | [EN] Public key in PEM format
+      expires_at:
+        type: string
+        format: int64
+        title: 过期时间（Unix 秒）| [EN] Expiry as a Unix timestamp in seconds
+      scenario:
+        $ref: '#/definitions/enumsKeyScenario'
+        title: 回显场景，便于调用方自检 | [EN] Echoed scenario for the caller to verify
+    title: |-
+      签发临时密钥响应。
+      [EN] Issue temporary key response
+  protobufAny:
+    type: object
+    properties:
+      '@type':
+        type: string
+    additionalProperties: {}
+  rpcStatus:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      details:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/protobufAny'

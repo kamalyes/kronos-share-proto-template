@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "proto/common/common.proto";
+import "proto/enums/enums.proto";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/inventory";
+option java_package = "com.kamalyes.kronos.api.inventory";
+package kronos.api.inventory;
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Kronos Warehouse Service"
+    description: "Warehouse 管理服务（第二个 CRUD 示例，演示跨模块复用 common/enums） | Warehouse management service (second CRUD example, shows cross-module reuse of common/enums)"
+    version: "1.0.0"
+  }
+  tags: [
+    {
+      name: "WarehouseManagement"
+      description: "Warehouse 管理 | Warehouse Management"
+    }
+  ]
+};
+
+//===========================  Warehouse 消息定义 | Warehouse Message Definitions  ==========================//
+
+// 创建Warehouse请求。
+// [EN] Create Warehouse request
+message WarehouseCreateRequest {
+  string tenant_id = 1;                                        // 租户ID | [EN] Tenant ID @inject_tag: validate:"required,tenant_id"
+  string name = 2;                                             // 名称 | [EN] Name @inject_tag: validate:"required,min=2,max=64"
+  string code = 3;                                             // 编码 | [EN] Code @inject_tag: validate:"required,min=2,max=32"
+  string icon_url = 4;                                         // 图标地址 | [EN] Icon URL  @inject_tag: validate:"omitempty,url"
+  enums.WarehouseCategory category = 5;    // 分类 | [EN] Category
+  int32 sort_order = 6;                                        // 排序序号 | [EN] Sort order  @inject_tag: validate:"gte=0,lte=9999"
+}
+
+// 创建Warehouse响应。
+// [EN] Create Warehouse response
+message WarehouseCreateResponse {
+  common.WarehouseInfo info = 1;           // Warehouse信息 | [EN] Warehouse info
+}
+
+// 获取Warehouse详情请求。
+// [EN] Get Warehouse detail request
+message WarehouseGetRequest {
+  string warehouse_id = 1;                  // WarehouseID | [EN] Warehouse ID @inject_tag: validate:"required"
+}
+
+// 获取Warehouse详情响应。
+// [EN] Get Warehouse detail response
+message WarehouseGetResponse {
+  common.WarehouseInfo info = 1;           // Warehouse信息 | [EN] Warehouse info
+}
+
+// Warehouse列表请求。
+// [EN] Warehouse list request
+message WarehouseListRequest {
+  common.Paging page_request = 1;                              // 分页请求 | [EN] Page request @inject_tag: validate:"required"
+  common.Sorting sort = 2;                                     // 排序 | [EN] Sorting
+  google.protobuf.StringValue keyword = 3;                     // 搜索关键词 | [EN] Search keyword
+  enums.WarehouseCategory category = 4;    // 分类 | [EN] Category
+  enums.CommonStatus status = 5;                               // 状态 | [EN] Status
+}
+
+// Warehouse列表响应。
+// [EN] Warehouse list response
+message WarehouseListResponse {
+  common.Paging page_response = 1;                             // 分页响应 | [EN] Page response
+  repeated common.WarehouseInfo infos = 2;  // Warehouse信息列表 | [EN] Warehouse info list
+}
+
+// 更新Warehouse请求。
+// [EN] Update Warehouse request
+message WarehouseUpdateRequest {
+  string warehouse_id = 1;                  // WarehouseID | [EN] Warehouse ID @inject_tag: validate:"required"
+  google.protobuf.StringValue name = 2;                        // 名称 | [EN] Name
+  google.protobuf.StringValue icon_url = 3;                    // 图标地址 | [EN] Icon URL
+  google.protobuf.Int32Value sort_order = 4;                   // 排序序号 | [EN] Sort order
+  enums.WarehouseCategory category = 5;    // 分类 | [EN] Category
+}
+
+// 更新Warehouse响应。
+// [EN] Update Warehouse response
+message WarehouseUpdateResponse {
+  common.WarehouseInfo info = 1;           // Warehouse信息 | [EN] Warehouse info
+}
+
+// 启停Warehouse请求。
+// [EN] Toggle Warehouse request
+message WarehouseUpdateStatusRequest {
+  string warehouse_id = 1;                  // WarehouseID | [EN] Warehouse ID @inject_tag: validate:"required"
+  enums.CommonStatus status = 2;                               // 状态 | [EN] Status @inject_tag: validate:"required"
+}
+
+// 删除Warehouse请求。
+// [EN] Delete Warehouse request
+message WarehouseDeleteRequest {
+  string warehouse_id = 1;                  // WarehouseID | [EN] Warehouse ID @inject_tag: validate:"required"
+}
+
+//===========================  服务定义 | Service Definition  ==========================//
+
+// Warehouse 管理服务。
+// [EN] Warehouse management service
+service WarehouseService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    description: "Warehouse 管理服务（第二个 CRUD 示例） | Warehouse management service (second CRUD example)"
+  };
+
+  // 创建Warehouse
+  // [EN] Create Warehouse
+  rpc WarehouseCreate(WarehouseCreateRequest) returns (WarehouseCreateResponse) {
+    option (google.api.http) = {
+      post: "/v1/inventory/warehouses"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "创建Warehouse | Create Warehouse"
+      tags: "WarehouseManagement"
+    };
+  }
+
+  // 获取Warehouse详情。
+  // [EN] Get Warehouse detail
+  rpc WarehouseGet(WarehouseGetRequest) returns (WarehouseGetResponse) {
+    option (google.api.http) = {
+      get: "/v1/inventory/warehouses/{warehouse_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "获取Warehouse详情 | Get Warehouse detail"
+      tags: "WarehouseManagement"
+    };
+  }
+
+  // Warehouse列表。
+  // [EN] Warehouse list
+  rpc WarehouseList(WarehouseListRequest) returns (WarehouseListResponse) {
+    option (google.api.http) = {
+      get: "/v1/inventory/warehouses"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Warehouse列表 | Warehouse list"
+      tags: "WarehouseManagement"
+    };
+  }
+
+  // 更新Warehouse
+  // [EN] Update Warehouse
+  rpc WarehouseUpdate(WarehouseUpdateRequest) returns (WarehouseUpdateResponse) {
+    option (google.api.http) = {
+      put: "/v1/inventory/warehouses/{warehouse_id}"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "更新Warehouse | Update Warehouse"
+      tags: "WarehouseManagement"
+    };
+  }
+
+  // 启停Warehouse（局部更新，复用通用空响应）。
+  // [EN] Toggle Warehouse (partial update, reuses the shared empty response)
+  rpc WarehouseUpdateStatus(WarehouseUpdateStatusRequest) returns (common.GeneralEmptyResponse) {
+    option (google.api.http) = {
+      patch: "/v1/inventory/warehouses/{warehouse_id}/status"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "启停Warehouse | Toggle Warehouse"
+      tags: "WarehouseManagement"
+    };
+  }
+
+  // 删除Warehouse
+  // [EN] Delete Warehouse
+  rpc WarehouseDelete(WarehouseDeleteRequest) returns (common.GeneralEmptyResponse) {
+    option (google.api.http) = {
+      delete: "/v1/inventory/warehouses/{warehouse_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "删除Warehouse | Delete Warehouse"
+      tags: "WarehouseManagement"
+    };
+  }
+}

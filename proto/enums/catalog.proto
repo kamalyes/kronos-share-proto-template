@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/enums";
+option java_package = "com.kamalyes.kronos.api.enums";
+package kronos.api.enums;
+
+// catalog 模块枚举 | catalog module enums
+// 枚举统一放在 proto/enums/ 下并注册到 enums.proto，禁止写在业务服务文件里。
+// [EN] Enums live in proto/enums/ and are registered in enums.proto, never inside a service file
+
+// Product 类型。
+// [EN] Product type
+enum ProductType {
+  PRODUCT_TYPE_UNSPECIFIED = 0;  // 未指定 | [EN] Unspecified
+  PRODUCT_TYPE_PERSONAL = 1;     // 个人 | [EN] Personal
+  PRODUCT_TYPE_ORGANIZATION = 2; // 组织 | [EN] Organization
+}
+
+// Product 等级。
+// [EN] Product level
+enum ProductLevel {
+  PRODUCT_LEVEL_UNSPECIFIED = 0; // 未指定 | [EN] Unspecified
+  PRODUCT_LEVEL_BRONZE = 1;      // 青铜 | [EN] Bronze
+  PRODUCT_LEVEL_SILVER = 2;      // 白银 | [EN] Silver
+  PRODUCT_LEVEL_GOLD = 3;        // 黄金 | [EN] Gold
+}

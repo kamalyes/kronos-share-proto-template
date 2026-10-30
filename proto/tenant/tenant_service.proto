@@ -1,0 +1,292 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "proto/common/common.proto";
+import "proto/enums/enums.proto";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/tenant";
+option java_package = "com.kamalyes.kronos.api.tenant";
+package kronos.api.tenant;
+
+// 混合模块示例（聚合根）| Mixed module example (aggregate root)
+//
+// 前两个示例模块是「一个模块一个 service」的干净 CRUD，真实项目里更常见的是这种：
+// 一个模块下多个 service 文件，共用模块级的实体与枚举，接口里混着三类形态
+//   1. 标准 CRUD —— 创建、详情、列表、更新、删除
+//   2. 动作型 RPC —— 不是对资源字段的增删改，而是触发一次行为（这里是重试同步）
+//   3. 子资源 —— 挂在聚合根下、有独立 ID、需要单独增改删（这里是地区分配）
+//
+// 同模块的第二个 service 见 tenant_member_service.proto
+//
+// [EN] The first two example modules are clean one-service-per-module CRUD. Real projects
+// look more like this: several service files in one module, sharing module-level entities
+// and enums, with three kinds of endpoint mixed together — standard CRUD, action-style RPCs
+// that trigger behaviour rather than edit fields, and sub-resources with their own IDs.
+// The module's second service lives in tenant_member_service.proto
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Kronos Tenant Service"
+    description: "Tenant 管理服务（混合示例：CRUD + 动作型接口 + 子资源） | Tenant management service (mixed example: CRUD + action endpoints + sub-resources)"
+    version: "1.0.0"
+  }
+  tags: [
+    {
+      name: "TenantManagement"
+      description: "Tenant 管理 | Tenant Management"
+    }
+  ]
+};
+
+//===========================  Tenant 消息定义 | Tenant Message Definitions  ==========================//
+
+// 创建Tenant请求
+// [EN] Create Tenant request
+message TenantCreateRequest {
+  string code = 1;                                      // 编码（全局唯一，创建后不可改）| [EN] Code, globally unique and immutable @inject_tag: validate:"required,min=2,max=32"
+  string name = 2;                                      // 名称 | [EN] Name @inject_tag: validate:"required,min=2,max=64"
+  string platform_id = 3;                               // 平台ID | [EN] Platform ID @inject_tag: validate:"required"
+  repeated string region_ids = 4;                       // 初始地区列表 | [EN] Initial region list @inject_tag: validate:"omitempty,max=20"
+  string owner_user_id = 5;                             // 所有者用户ID | [EN] Owner user ID @inject_tag: validate:"required"
+}
+
+// 创建Tenant响应
+// [EN] Create Tenant response
+message TenantCreateResponse {
+  common.TenantInfo info = 1;     // Tenant信息 | [EN] Tenant info
+}
+
+// 获取Tenant详情请求
+// [EN] Get Tenant detail request
+message TenantGetRequest {
+  string tenant_id = 1;            // TenantID | [EN] Tenant ID @inject_tag: validate:"required"
+}
+
+// 获取Tenant详情响应
+// [EN] Get Tenant detail response
+message TenantGetResponse {
+  common.TenantInfo info = 1;     // Tenant信息 | [EN] Tenant info
+}
+
+// Tenant列表请求
+// [EN] Tenant list request
+message TenantListRequest {
+  common.Paging page_request = 1;                       // 分页请求 | [EN] Page request @inject_tag: validate:"required"
+  common.Sorting sort = 2;                              // 排序 | [EN] Sorting
+  google.protobuf.StringValue keyword = 3;              // 关键词（编码、名称）| [EN] Keyword (code, name)
+  enums.TenantStatus status = 4;  // 状态 | [EN] Status
+  google.protobuf.StringValue region_id = 5;            // 按地区过滤 | [EN] Filter by region
+}
+
+// Tenant列表响应
+// [EN] Tenant list response
+message TenantListResponse {
+  common.Paging page_response = 1;                            // 分页响应 | [EN] Page response
+  repeated common.TenantInfo infos = 2;  // 列表 | [EN] List
+}
+
+// 更新Tenant请求
+// [EN] Update Tenant request
+message TenantUpdateRequest {
+  string tenant_id = 1;            // TenantID | [EN] Tenant ID @inject_tag: validate:"required"
+  google.protobuf.StringValue name = 2;                 // 名称 | [EN] Name
+  enums.TenantStatus status = 3;  // 状态 | [EN] Status
+}
+
+// 更新Tenant响应
+// [EN] Update Tenant response
+message TenantUpdateResponse {
+  common.TenantInfo info = 1;     // Tenant信息 | [EN] Tenant info
+}
+
+// 删除Tenant请求
+// [EN] Delete Tenant request
+message TenantDeleteRequest {
+  string tenant_id = 1;            // TenantID | [EN] Tenant ID @inject_tag: validate:"required"
+}
+
+//===========================  动作型接口消息 | Action Endpoint Messages  ==========================//
+
+// 重试同步请求
+// [EN] Retry sync request
+// 动作型接口也要有自己的 Request/Response，不要复用 GetRequest：
+// 以后加「只同步某个下游」这种参数时才有地方放
+// [EN] An action endpoint needs its own request/response rather than reusing GetRequest,
+// so that parameters like "sync only this downstream" have somewhere to live later
+message TenantRetrySyncRequest {
+  string tenant_id = 1;            // TenantID | [EN] Tenant ID @inject_tag: validate:"required"
+  google.protobuf.BoolValue force = 2;                  // 是否强制重新同步已成功的项 | [EN] Whether to re-sync already succeeded items
+}
+
+// 重试同步响应
+// [EN] Retry sync response
+message TenantRetrySyncResponse {
+  enums.TenantSyncState sync_state = 1;  // 本次动作后的同步状态 | [EN] Sync state after this action
+  string message = 2;                                          // 结果说明 | [EN] Result description
+}
+
+//===========================  子资源消息 | Sub-resource Messages  ==========================//
+
+// 分配地区请求
+// [EN] Assign region request
+message TenantRegionAssignRequest {
+  string tenant_id = 1;            // TenantID | [EN] Tenant ID @inject_tag: validate:"required"
+  string region_id = 2;                                 // 地区ID | [EN] Region ID @inject_tag: validate:"required"
+  bool primary = 3;                                     // 是否设为主地区 | [EN] Whether to set as primary
+}
+
+// 分配地区响应
+// [EN] Assign region response
+message TenantRegionAssignResponse {
+  common.TenantRegionAssignment assignment = 1;  // 地区分配 | [EN] Region assignment
+}
+
+// 更新地区分配请求
+// [EN] Update region assignment request
+message TenantRegionAssignmentUpdateRequest {
+  string tenant_id = 1;            // TenantID | [EN] Tenant ID @inject_tag: validate:"required"
+  string assignment_id = 2;                             // 分配ID | [EN] Assignment ID @inject_tag: validate:"required"
+  google.protobuf.BoolValue primary = 3;                // 是否主地区 | [EN] Whether primary
+}
+
+// 更新地区分配响应
+// [EN] Update region assignment response
+message TenantRegionAssignmentUpdateResponse {
+  common.TenantRegionAssignment assignment = 1;  // 地区分配 | [EN] Region assignment
+}
+
+// 移除地区分配请求
+// [EN] Remove region assignment request
+message TenantRegionAssignmentRemoveRequest {
+  string tenant_id = 1;            // TenantID | [EN] Tenant ID @inject_tag: validate:"required"
+  string assignment_id = 2;                             // 分配ID | [EN] Assignment ID @inject_tag: validate:"required"
+}
+
+//===========================  服务定义 | Service Definition  ==========================//
+
+// Tenant 管理服务
+// [EN] Tenant management service
+service TenantService {
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_tag) = {
+    description: "Tenant 管理服务（CRUD + 动作型 + 子资源） | Tenant management (CRUD + actions + sub-resources)"
+  };
+
+  // 创建Tenant
+  // [EN] Create Tenant
+  rpc TenantCreate(TenantCreateRequest) returns (TenantCreateResponse) {
+    option (google.api.http) = {
+      post: "/v1/tenant/tenants"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "创建Tenant | Create Tenant"
+      tags: "TenantManagement"
+    };
+  }
+
+  // 获取Tenant详情
+  // [EN] Get Tenant detail
+  rpc TenantGet(TenantGetRequest) returns (TenantGetResponse) {
+    option (google.api.http) = {
+      get: "/v1/tenant/tenants/{tenant_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "获取Tenant详情 | Get Tenant detail"
+      tags: "TenantManagement"
+    };
+  }
+
+  // Tenant列表
+  // [EN] Tenant list
+  rpc TenantList(TenantListRequest) returns (TenantListResponse) {
+    option (google.api.http) = {
+      get: "/v1/tenant/tenants"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Tenant列表 | Tenant list"
+      tags: "TenantManagement"
+    };
+  }
+
+  // 更新Tenant
+  // [EN] Update Tenant
+  rpc TenantUpdate(TenantUpdateRequest) returns (TenantUpdateResponse) {
+    option (google.api.http) = {
+      put: "/v1/tenant/tenants/{tenant_id}"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "更新Tenant | Update Tenant"
+      tags: "TenantManagement"
+    };
+  }
+
+  // 删除Tenant
+  // [EN] Delete Tenant
+  rpc TenantDelete(TenantDeleteRequest) returns (common.GeneralEmptyResponse) {
+    option (google.api.http) = {
+      delete: "/v1/tenant/tenants/{tenant_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "删除Tenant | Delete Tenant"
+      tags: "TenantManagement"
+    };
+  }
+
+  // 重试下游同步（动作型接口）
+  // [EN] Retry downstream sync (action-style endpoint)
+  // 动作型接口统一用 POST + 动词短横线路径，不要硬塞进 PUT/PATCH：
+  // 它不是在改资源字段，重复调用的语义也不是幂等覆盖
+  // [EN] Action endpoints use POST with a verb path instead of being forced into PUT/PATCH:
+  // they do not edit fields, and repeating them is not an idempotent overwrite
+  rpc TenantRetrySync(TenantRetrySyncRequest) returns (TenantRetrySyncResponse) {
+    option (google.api.http) = {
+      post: "/v1/tenant/tenants/{tenant_id}/retry-sync"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "重试下游同步 | Retry downstream sync"
+      tags: "TenantManagement"
+    };
+  }
+
+  // 分配地区（子资源创建）
+  // [EN] Assign a region (sub-resource create)
+  rpc TenantRegionAssign(TenantRegionAssignRequest) returns (TenantRegionAssignResponse) {
+    option (google.api.http) = {
+      post: "/v1/tenant/tenants/{tenant_id}/region-assignments"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "分配地区 | Assign region"
+      tags: "TenantManagement"
+    };
+  }
+
+  // 更新地区分配（子资源更新）
+  // [EN] Update a region assignment (sub-resource update)
+  rpc TenantRegionAssignmentUpdate(TenantRegionAssignmentUpdateRequest) returns (TenantRegionAssignmentUpdateResponse) {
+    option (google.api.http) = {
+      put: "/v1/tenant/tenants/{tenant_id}/region-assignments/{assignment_id}"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "更新地区分配 | Update region assignment"
+      tags: "TenantManagement"
+    };
+  }
+
+  // 移除地区分配（子资源删除）
+  // [EN] Remove a region assignment (sub-resource delete)
+  rpc TenantRegionAssignmentRemove(TenantRegionAssignmentRemoveRequest) returns (common.GeneralEmptyResponse) {
+    option (google.api.http) = {
+      delete: "/v1/tenant/tenants/{tenant_id}/region-assignments/{assignment_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "移除地区分配 | Remove region assignment"
+      tags: "TenantManagement"
+    };
+  }
+}

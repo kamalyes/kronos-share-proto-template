@@ -1,0 +1,121 @@
+swagger: "2.0"
+info:
+  title: Kronos Id Block Service
+  description: 'ID 号段分发服务：由一处集中发号，调用方一次申领一整段后在本地发放，避免每个实例各自决定 ID | Id block allocation service: one place issues ids, callers claim a whole block and serve it locally instead of each instance deciding ids for itself'
+  version: 1.0.0
+tags:
+  - name: IdBlockManagement
+    description: ID 号段分发 | Id Block Allocation
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /v1/id-blocks/allocate:
+    post:
+      summary: 申领 ID 号段 | Allocate an id block
+      description: 从指定命名空间的中心序列取出 count 个 ID，调用方在本地缓冲后逐个发放 | Takes count ids from the central sequence of the given namespace for the caller to buffer and serve locally
+      operationId: IdBlockService_IdBlockAllocate
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/keyIdBlockAllocateResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/keyIdBlockAllocateRequest'
+      tags:
+        - IdBlockManagement
+definitions:
+  keyIdBlockAllocateRequest:
+    type: object
+    properties:
+      namespace:
+        type: string
+        description: |-
+          必填且不要图省事复用：命名空间相同就是共用同一个序列，两个调用方的号段会交错。
+          不会重复（序列是同一个），但一方的写入量会推高另一方的号，
+          而且谁都查不出为什么——建议用「服务名:实体名」。
+
+          [EN] Required, and not to be reused for convenience: an identical namespace means one
+          shared sequence, so two callers' blocks interleave. They do not collide, since it is the
+          same sequence, but one caller's volume pushes the other's numbers along and nobody can tell
+          why. A service-plus-entity name is the recommended form.
+
+          序列命名空间 | [EN] Sequence namespace
+        title: 序列命名空间，隔离不同服务/实体的号段。
+        minLength: 2
+        maxLength: 64
+      count:
+        type: integer
+        format: int32
+        description: |-
+          有上限不是为了限流，是为了防住两件事：一次申领百万个会把响应体撑爆，
+          而且那一段里绝大部分会随进程退出丢掉，等于白白跳号。
+          调用方该做的是按消费速率调小号段并提高申领频率，不是一次要一大把。
+
+          [EN] The cap is not rate limiting: claiming a million at once would blow up the response
+          body, and most of that block would be discarded at exit, burning numbers for nothing. The
+          right adjustment is a smaller block claimed more often, matched to the consumption rate.
+
+          申领数量 | [EN] How many ids to claim
+        title: 申领数量。
+        minimum: 1
+        maximum: 1000
+    title: |-
+      申领 ID 号段请求。
+      [EN] Allocate id block request
+    required:
+      - namespace
+      - count
+  keyIdBlockAllocateResponse:
+    type: object
+    properties:
+      ids:
+        type: array
+        items:
+          type: string
+        description: |-
+          返回具体 ID 而不是「起止区间 + 格式规则」：返回区间更省带宽，但格式规则
+          就落到了每个调用方身上，各自实现迟早会不一致，而不一致的表现是
+          「同一个序列在不同服务里长得不一样」，事后极难统一。
+
+          [EN] Concrete ids rather than a range plus a formatting rule: a range saves bandwidth but
+          moves the formatting into every caller, where the implementations eventually diverge and
+          the same sequence ends up looking different in different services, which is very hard to
+          reconcile afterwards.
+
+          已分配的 ID 列表 | [EN] Allocated ids
+        title: 已分配的 ID，长度等于请求的 count。
+      namespace:
+        type: string
+        title: 回显命名空间，便于调用方自检 | [EN] Echoed namespace for the caller to verify
+    title: |-
+      申领 ID 号段响应。
+      [EN] Allocate id block response
+  protobufAny:
+    type: object
+    properties:
+      '@type':
+        type: string
+    additionalProperties: {}
+  rpcStatus:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      details:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/protobufAny'
