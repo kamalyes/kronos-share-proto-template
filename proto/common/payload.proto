@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+import "proto/enums/enums.proto";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/common";
+option java_package = "com.kamalyes.kronos.api.common";
+package kronos.api.common;
+
+// 认证载荷。
+// [EN] Authentication payload
+//
+// 这是网关与下游服务之间传递「调用者是谁」的唯一载体。
+//
+// 流向：网关拿请求去问 AC 服务 → AC 返回 Payload → 网关把它注入 HTTP header
+// 与 context → 下游服务的 request_context 中间件从 header 取出来 →
+// 业务代码通过 gwmiddleware.GetTenantID / GetUserID 读到。
+//
+// 为什么下游服务不自己验 token：验一次就够了，验两次意味着两处的验证逻辑
+// 要永远一致，而它们迟早不一致——不一致时「网关放行、下游拒绝」是最好的结果，
+// 「网关拒绝、下游放行」才是事故。把验证收敛到网关一处，下游只信 header。
+//
+// 这也意味着：**下游服务必须不能直接暴露给外网**。它信任 header 里的身份，
+// 谁能直连它谁就能伪造任意用户。这一条是整个架构的前提，部署时靠网络策略保证。
+//
+// [EN] The only carrier of caller identity between the gateway and downstream services. The
+// gateway asks access control, receives this payload, injects it into HTTP headers and the
+// context, and the downstream request_context middleware reads it back out. Downstream services
+// do not re-verify the token: verifying once is enough, and verifying twice means two
+// implementations that must agree forever and eventually will not — where "gateway allows,
+// downstream rejects" is the good outcome and the reverse is an incident. Verification is
+// therefore concentrated in the gateway and downstream trusts the header, which makes it
+// mandatory that downstream services are never exposed directly: anything that can reach them
+// can forge any user. That premise is enforced by network policy at deployment time.
+message Payload {
+  string user_id = 1;                 // 用户ID | [EN] User ID
+  string nickname = 2;                // 昵称 | [EN] Nickname
+  string tenant_id = 3;               // 租户ID（运维侧为空）| [EN] Tenant ID, empty on the ops side
+  string region_code = 4;             // 区域编码 | [EN] Region code
+  string role_code = 5;               // 当前角色编码 | [EN] Current role code
+  enums.DomainType domain = 6;        // 用户域 | [EN] User domain
+  bool is_ops = 7;                    // 是否运维侧 | [EN] Whether on the ops side
+  string jti = 8;                     // JWT ID，用于单点失效 | [EN] JWT ID, for targeted revocation
+  string family_id = 9;               // Refresh Token 家族ID | [EN] Refresh token family id
+}

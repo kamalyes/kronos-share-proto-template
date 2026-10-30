@@ -3,9 +3,9 @@
 
 /*
  * @Author: kamalyes example@qq.com
- * @Date: 2026-10-30 09:08:16
+ * @Date: 2026-10-30 10:10:16
  * @LastEditors: kamalyes example@qq.com
- * @LastEditTime: 2026-10-30 09:08:16
+ * @LastEditTime: 2026-10-30 10:10:16
  * @FilePath: \kronos-share-proto-template\swagger_embed.go
  * @Description: swagger 文件嵌入（仅 -tags swagger 时编译） | Swagger embedding (only built with -tags swagger)
  *

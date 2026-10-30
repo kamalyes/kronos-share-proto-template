@@ -28,6 +28,10 @@ import public "proto/enums/inventory.proto";
 // [EN] tenant module enums
 import public "proto/enums/tenant.proto";
 
+// access_control 模块枚举。
+// [EN] access_control module enums
+import public "proto/enums/access_control.proto";
+
 // key 模块枚举（临时密钥与 ID 号段分发）。
 //
 // 这个模块是具体能力而不是占位示例，所以用 IncludeKeyModule 开关控制：

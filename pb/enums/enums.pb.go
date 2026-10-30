@@ -24,8 +24,8 @@ var File_proto_enums_enums_proto protoreflect.FileDescriptor
 
 const file_proto_enums_enums_proto_rawDesc = "" +
 	"\n" +
-	"\x17proto/enums/enums.proto\x12\x10kronos.api.enums\x1a\x18proto/enums/status.proto\x1a\x19proto/enums/catalog.proto\x1a\x1bproto/enums/inventory.proto\x1a\x18proto/enums/tenant.proto\x1a\x15proto/enums/key.protoBY\n" +
-	"\x1dcom.kamalyes.kronos.api.enumsZ8github.com/kamalyes/kronos-share-proto-template/pb/enumsP\x00P\x01P\x02P\x03P\x04b\x06proto3"
+	"\x17proto/enums/enums.proto\x12\x10kronos.api.enums\x1a\x18proto/enums/status.proto\x1a\x19proto/enums/catalog.proto\x1a\x1bproto/enums/inventory.proto\x1a\x18proto/enums/tenant.proto\x1a proto/enums/access_control.proto\x1a\x15proto/enums/key.protoBY\n" +
+	"\x1dcom.kamalyes.kronos.api.enumsZ8github.com/kamalyes/kronos-share-proto-template/pb/enumsP\x00P\x01P\x02P\x03P\x04P\x05b\x06proto3"
 
 var file_proto_enums_enums_proto_goTypes = []any{}
 var file_proto_enums_enums_proto_depIdxs = []int32{
@@ -45,6 +45,7 @@ func file_proto_enums_enums_proto_init() {
 	file_proto_enums_catalog_proto_init()
 	file_proto_enums_inventory_proto_init()
 	file_proto_enums_tenant_proto_init()
+	file_proto_enums_access_control_proto_init()
 	file_proto_enums_key_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{

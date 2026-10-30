@@ -24,8 +24,8 @@ var File_proto_common_common_proto protoreflect.FileDescriptor
 
 const file_proto_common_common_proto_rawDesc = "" +
 	"\n" +
-	"\x19proto/common/common.proto\x12\x11kronos.api.common\x1a\x19proto/common/result.proto\x1a\x18proto/common/empty.proto\x1a\x1dproto/common/pagination.proto\x1a\x17proto/common/i18n.proto\x1a\x1aproto/common/catalog.proto\x1a\x1cproto/common/inventory.proto\x1a\x19proto/common/tenant.protoB[\n" +
-	"\x1ecom.kamalyes.kronos.api.commonZ9github.com/kamalyes/kronos-share-proto-template/pb/commonP\x00P\x01P\x02P\x03P\x04P\x05P\x06b\x06proto3"
+	"\x19proto/common/common.proto\x12\x11kronos.api.common\x1a\x19proto/common/result.proto\x1a\x18proto/common/empty.proto\x1a\x1dproto/common/pagination.proto\x1a\x17proto/common/i18n.proto\x1a\x1aproto/common/payload.proto\x1a\x1aproto/common/catalog.proto\x1a\x1cproto/common/inventory.proto\x1a\x19proto/common/tenant.protoB[\n" +
+	"\x1ecom.kamalyes.kronos.api.commonZ9github.com/kamalyes/kronos-share-proto-template/pb/commonP\x00P\x01P\x02P\x03P\x04P\x05P\x06P\ab\x06proto3"
 
 var file_proto_common_common_proto_goTypes = []any{}
 var file_proto_common_common_proto_depIdxs = []int32{
@@ -45,6 +45,7 @@ func file_proto_common_common_proto_init() {
 	file_proto_common_empty_proto_init()
 	file_proto_common_pagination_proto_init()
 	file_proto_common_i18n_proto_init()
+	file_proto_common_payload_proto_init()
 	file_proto_common_catalog_proto_init()
 	file_proto_common_inventory_proto_init()
 	file_proto_common_tenant_proto_init()

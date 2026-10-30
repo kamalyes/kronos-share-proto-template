@@ -7,7 +7,7 @@ GO_MODULE="github.com/kamalyes/kronos-share-proto-template"
 PROTO_BASE_MODULES=(enums)
 # 业务模块列表：新增模块后必须加到这里，否则不会被生成。
 # Service module list: a new module must be registered here or it will not be generated
-PROTO_SERVICE_MODULES=(common catalog inventory tenant key)
+PROTO_SERVICE_MODULES=(common catalog inventory tenant access_control key)
 PROTO_ALL_MODULES=("${PROTO_BASE_MODULES[@]}" "${PROTO_SERVICE_MODULES[@]}")
 
 project_root

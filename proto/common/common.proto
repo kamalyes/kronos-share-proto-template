@@ -28,6 +28,10 @@ import public "proto/common/pagination.proto";
 // [EN] Localized text
 import public "proto/common/i18n.proto";
 
+// 认证载荷（网关与下游服务之间传递调用者身份）。
+// [EN] Authentication payload, carrying caller identity from the gateway to downstream services
+import public "proto/common/payload.proto";
+
 // catalog 模块实体。
 // [EN] catalog module entities
 import public "proto/common/catalog.proto";

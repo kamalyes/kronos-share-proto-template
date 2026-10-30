@@ -1,8 +1,8 @@
 /*
  * @Author: kamalyes example@qq.com
- * @Date: 2026-10-30 09:08:16
+ * @Date: 2026-10-30 10:10:16
  * @LastEditors: kamalyes example@qq.com
- * @LastEditTime: 2026-10-30 09:08:16
+ * @LastEditTime: 2026-10-30 10:10:16
  * @FilePath: \kronos-share-proto-template\bootstrap\main.go
  * @Description: 网关启动器 | Gateway launcher
  *

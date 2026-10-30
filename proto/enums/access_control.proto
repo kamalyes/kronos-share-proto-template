@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamalyes/kronos-share-proto-template/pb/enums";
+option java_package = "com.kamalyes.kronos.api.enums";
+package kronos.api.enums;
+
+// access_control 模块枚举 | access_control module enums
+
+// 用户域。
+// [EN] User domain
+//
+// 区分「运维侧」与「租户侧」用户。网关在放行时会把自己所属的域钉进 Payload，
+// 并校验 AC 返回的域与之一致——这一道比它看起来重要：
+// 运维网关和租户网关通常共用同一个 AC 服务，如果不校验域，
+// 一个租户用户的 token 拿到运维网关上去用，AC 会认为它合法（token 确实有效），
+// 于是租户用户越权进了运维接口。
+//
+// [EN] Separates ops-side from tenant-side users. The gateway pins its own domain into the
+// payload and verifies that the one returned by access control matches. That check matters more
+// than it looks: an ops gateway and a tenant gateway usually share one access-control service,
+// and without it a tenant user's token presented to the ops gateway is accepted, since the token
+// really is valid, and that user reaches ops endpoints.
+enum DomainType {
+  DOMAIN_TYPE_UNSPECIFIED = 0; // 未指定 | [EN] Unspecified
+  DOMAIN_TYPE_TENANT = 1;      // 租户侧用户 | [EN] Tenant-side user
+  DOMAIN_TYPE_OPS = 2;         // 运维侧用户 | [EN] Ops-side user
+}
